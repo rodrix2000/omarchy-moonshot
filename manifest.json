@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.rodrix2000.moonshot",
+  "name": "Moonshot",
+  "version": "0.1.0",
+  "author": "Rudy Rodriguez",
+  "license": "MIT",
+  "description": "A beautiful, offline-first moon phase and local lunar timing companion for the Omarchy bar.",
+  "homepage": "https://github.com/rodrix2000/omarchy-moonshot",
+  "repository": "https://github.com/rodrix2000/omarchy-moonshot",
+  "keywords": [
+    "moon",
+    "moon-phase",
+    "astronomy",
+    "lunar",
+    "offline",
+    "bar-widget",
+    "quickshell"
+  ],
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Moonshot",
+    "description": "See the current moon phase and open a local lunar panel with illumination, moon age, major phases, and moonrise/moonset.",
+    "category": "Info",
+    "aliases": [
+      "moon",
+      "lunar",
+      "astronomy",
+      "phase",
+      "moonrise",
+      "moonset"
+    ],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "displayMode": "disk",
+      "timeFormat": "locale",
+      "renderMode": "realistic",
+      "animationLevel": "subtle",
+      "reducedMotion": false,
+      "refreshMinutes": 15
+    },
+    "schema": [
+      {
+        "key": "displayMode",
+        "type": "enum",
+        "label": "Bar display",
+        "options": [
+          "disk",
+          "illumination",
+          "phase",
+          "next-full",
+          "moonrise"
+        ]
+      },
+      {
+        "key": "timeFormat",
+        "type": "enum",
+        "label": "Time format",
+        "options": [
+          "locale",
+          "12h",
+          "24h"
+        ]
+      },
+      {
+        "key": "renderMode",
+        "type": "enum",
+        "label": "Moon style",
+        "options": [
+          "realistic",
+          "minimal"
+        ]
+      },
+      {
+        "key": "reducedMotion",
+        "type": "boolean",
+        "label": "Reduce motion"
+      },
+      {
+        "key": "refreshMinutes",
+        "type": "number",
+        "label": "Refresh interval",
+        "min": 5,
+        "max": 120
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.svg text
+*.qml text
+*.js text
+*.json text
+*.toml text
+*.py text
+*.md text
+*.sh text eol=lf
+Makefile text eol=lf

@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.qmlcache/
+build/
+dist/
+*.log
+.DS_Store
+.vscode/
+.idea/
