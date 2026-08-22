@@ -141,31 +141,38 @@ Item {
     anchors.fill: parent
     spacing: Style.spacing.rowGap
 
-    Row {
+    // Mode Tabs & Close Button
+    Item {
       width: parent.width
-      spacing: Style.spacing.controlGap
+      height: tabRow.implicitHeight
 
-      Button {
-        text: "City Search"
-        selected: root.tabMode === "search"
-        onClicked: { root.tabMode = "search" }
+      Row {
+        id: tabRow
+        anchors.left: parent.left
+        spacing: Style.spacing.controlGap
+
+        Button {
+          text: "City Search"
+          selected: root.tabMode === "search"
+          onClicked: { root.tabMode = "search" }
+        }
+
+        Button {
+          text: "Manual Coordinates"
+          selected: root.tabMode === "manual"
+          onClicked: { root.tabMode = "manual" }
+        }
       }
 
       Button {
-        text: "Manual Coordinates"
-        selected: root.tabMode === "manual"
-        onClicked: { root.tabMode = "manual" }
-      }
-
-      Item { width: Style.spacing.md; height: 1 }
-
-      Button {
+        anchors.right: parent.right
         text: "✕"
-        tooltipText: "Cancel"
+        tooltipText: "Cancel (Esc)"
         onClicked: { root.syncFromModel(); root.closed() }
       }
     }
 
+    // Search Tab
     Column {
       width: parent.width
       visible: root.tabMode === "search"
@@ -229,6 +236,7 @@ Item {
       }
     }
 
+    // Manual Coordinates Tab
     Column {
       width: parent.width
       visible: root.tabMode === "manual"
@@ -316,25 +324,31 @@ Item {
       }
     }
 
-    Row {
+    // Action Buttons Row
+    Item {
       width: parent.width
-      spacing: Style.spacing.controlGap
+      height: leftActions.implicitHeight
 
-      Button {
-        text: "Import Weather"
-        tooltipText: "Import coordinates from Omarchy Weather"
-        onClicked: { root.importWeather() }
+      Row {
+        id: leftActions
+        anchors.left: parent.left
+        spacing: Style.spacing.controlGap
+
+        Button {
+          text: "Import Weather"
+          tooltipText: "Import coordinates from Omarchy Weather"
+          onClicked: { root.importWeather() }
+        }
+
+        Button {
+          text: "Clear Location"
+          tooltipText: "Reset to unconfigured global mode"
+          onClicked: { root.model.clearLocation(); root.closed() }
+        }
       }
 
       Button {
-        text: "Clear Location"
-        tooltipText: "Reset to unconfigured global mode"
-        onClicked: { root.model.clearLocation(); root.closed() }
-      }
-
-      Item { width: Style.spacing.md; height: 1 }
-
-      Button {
+        anchors.right: parent.right
         text: "Save"
         selected: true
         onClicked: { root.validateAndSave() }

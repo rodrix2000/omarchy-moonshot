@@ -118,10 +118,14 @@ Panel {
           visible: !root.editingLocation
           spacing: Style.spacing.rowGap
 
-          Row {
+          // 1. Top Header
+          Item {
             width: parent.width
+            height: headerLeft.implicitHeight
 
             Column {
+              id: headerLeft
+              anchors.left: parent.left
               spacing: 2
               Text {
                 text: "MOONSHOT"
@@ -138,17 +142,18 @@ Panel {
               }
             }
 
-            Item { width: Style.spacing.md; height: 1 }
-
             Column {
+              anchors.right: parent.right
               spacing: 2
-                            Text {
+              Text {
+                anchors.right: parent.right
                 text: moonModel.locationConfigured ? moonModel.locationLabel : "No location set"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 color: Color.foreground
               }
               Text {
+                anchors.right: parent.right
                 text: "north-up chart"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -157,10 +162,11 @@ Panel {
             }
           }
 
+          // 2. Hero Moon Disk & Core Metrics
           Column {
             width: parent.width
             spacing: Style.spacing.controlGap
-            
+
             MoonDisk {
               anchors.horizontalCenter: parent.horizontalCenter
               size: Style.space(130)
@@ -191,14 +197,20 @@ Panel {
             }
           }
 
+          // 3. Observer Rise / Set Card
           BorderSurface {
             width: parent.width
+            height: riseSetBox.implicitHeight + Style.spacing.popupPadding * 2
             padding: Style.spacing.popupPadding
             radius: Style.cornerRadius
             color: Color.popups.background
 
             Column {
-              width: parent.width
+              id: riseSetBox
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.top: parent.top
+              anchors.margins: Style.spacing.popupPadding
               spacing: Style.spacing.controlGap
 
               Row {
@@ -267,6 +279,7 @@ Panel {
             }
           }
 
+          // 4. Upcoming Major Phases
           Column {
             width: parent.width
             spacing: Style.spacing.controlGap
@@ -305,49 +318,62 @@ Panel {
             }
           }
 
-          Row {
+          // 5. Date Navigation Controls
+          Item {
             width: parent.width
-            spacing: Style.spacing.controlGap
+            height: dateNavLeft.implicitHeight
 
-            Button {
-              text: "‹ Previous"
-              tooltipText: "Previous day (Left Arrow)"
-              onClicked: { moonModel.stepDate(-1) }
+            Row {
+              id: dateNavLeft
+              anchors.left: parent.left
+              spacing: Style.spacing.controlGap
+
+              Button {
+                text: "‹ Previous"
+                tooltipText: "Previous day (Left Arrow)"
+                onClicked: { moonModel.stepDate(-1) }
+              }
+
+              Button {
+                text: moonModel.isToday ? "Today" : "Jump to Today"
+                selected: moonModel.isToday
+                tooltipText: "Return to Today (T)"
+                onClicked: { moonModel.jumpToToday() }
+              }
+
+              Button {
+                text: "Next ›"
+                tooltipText: "Next day (Right Arrow)"
+                onClicked: { moonModel.stepDate(1) }
+              }
             }
 
-            Button {
-              text: moonModel.isToday ? "Today" : "Jump to Today"
-              selected: moonModel.isToday
-              tooltipText: "Return to Today (T)"
-              onClicked: { moonModel.jumpToToday() }
-            }
+            Row {
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.spacing.controlGap
 
-            Button {
-              text: "Next ›"
-              tooltipText: "Next day (Right Arrow)"
-              onClicked: { moonModel.stepDate(1) }
-            }
+              Button {
+                text: "🌕"
+                tooltipText: "Jump to next Full Moon (F)"
+                onClicked: { moonModel.jumpToPhase(2) }
+              }
 
-            Item { width: Style.spacing.md; height: 1 }
-
-            Button {
-              text: "🌕"
-              tooltipText: "Jump to next Full Moon (F)"
-              onClicked: { moonModel.jumpToPhase(2) }
-            }
-
-            Button {
-              text: "🌑"
-              tooltipText: "Jump to next New Moon (N)"
-              onClicked: { moonModel.jumpToPhase(0) }
+              Button {
+                text: "🌑"
+                tooltipText: "Jump to next New Moon (N)"
+                onClicked: { moonModel.jumpToPhase(0) }
+              }
             }
           }
 
-          Row {
+          // 6. Bottom Footer & Location Button
+          Item {
             width: parent.width
-            spacing: Style.spacing.controlGap
+            height: footerButtons.implicitHeight
 
             Text {
+              anchors.left: parent.left
               anchors.verticalCenter: parent.verticalCenter
               text: moonModel.loading ? "Calculating..." : (moonModel.stale ? "⚠️ Stale data" : "Updated just now")
               font.family: Style.font.family
@@ -355,18 +381,22 @@ Panel {
               color: moonModel.stale ? Color.urgent : Color.muted
             }
 
-            Item { width: Style.spacing.md; height: 1 }
+            Row {
+              id: footerButtons
+              anchors.right: parent.right
+              spacing: Style.spacing.controlGap
 
-            Button {
-              text: "📍 Location"
-              tooltipText: "Configure Location (L)"
-              onClicked: { root.editingLocation = true }
-            }
+              Button {
+                text: "📍 Location"
+                tooltipText: "Configure Location (L)"
+                onClicked: { root.editingLocation = true }
+              }
 
-            Button {
-              text: "⟳"
-              tooltipText: "Refresh (R)"
-              onClicked: { moonModel.refresh() }
+              Button {
+                text: "⟳"
+                tooltipText: "Refresh (R)"
+                onClicked: { moonModel.refresh() }
+              }
             }
           }
         }
