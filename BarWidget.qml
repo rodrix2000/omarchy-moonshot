@@ -11,7 +11,7 @@ BarWidget {
     if (!target) return
     if ("bar" in target) target.bar = root.bar
     if ("settings" in target) target.settings = root.settings
-    if ("anchorItem" in target) target.anchorItem = widgetContainer
+    if ("anchorItem" in target) target.anchorItem = button
     if ("hostWidget" in target) target.hostWidget = root
   }
 
@@ -40,11 +40,8 @@ BarWidget {
   }
 
   readonly property var moonModel: panelLoader.item ? panelLoader.item.model : null
-
-  // Display mode from settings
   readonly property string displayMode: root.setting("displayMode", "disk")
 
-  // Helper text for bar display mode
   readonly property string barText: {
     if (!moonModel) return ""
     if (root.displayMode === "illumination") {
@@ -70,8 +67,8 @@ BarWidget {
   }
 
   visible: true
-  implicitWidth: widgetContainer.implicitWidth
-  implicitHeight: widgetContainer.implicitHeight
+  implicitWidth: button.implicitWidth
+  implicitHeight: button.implicitHeight
 
   onBarChanged: injectPanel()
   onSettingsChanged: injectPanel()
@@ -87,25 +84,22 @@ BarWidget {
     }
   }
 
-  Item {
-    id: widgetContainer
-    implicitWidth: contentRow.implicitWidth + (contentRow.spacing > 0 ? Style.spacing.controlPaddingX * 2 : Style.bar.statusSlot)
-    implicitHeight: Style.bar.statusSlot
-    anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+  WidgetButton {
+    id: button
+    anchors.fill: parent
+    bar: root.bar
+    tooltipText: root.barTooltip
+    labelVisible: false
+    hasVisualContent: true
 
-    MouseArea {
-      anchors.fill: parent
-      hoverEnabled: true
-      acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+    fixedWidth: root.vertical ? root.barSize : (contentRow.implicitWidth + (root.barText !== "" ? Style.spacing.controlPaddingX * 2 : Style.spacing.md * 2))
+    fixedHeight: root.barSize
 
-      onPressed: function(mouse) {
-        if (mouse.button === Qt.RightButton) {
-          root.togglePanel()
-        } else if (mouse.button === Qt.MiddleButton) {
-          root.refresh()
-        } else {
-          root.togglePanel()
-        }
+    onPressed: function(buttonCode) {
+      if (buttonCode === Qt.MiddleButton) {
+        root.refresh()
+      } else {
+        root.togglePanel()
       }
     }
 
@@ -116,7 +110,7 @@ BarWidget {
 
       MoonDisk {
         anchors.verticalCenter: parent.verticalCenter
-        size: Style.space(20)
+        size: Style.space(16)
         phaseAngleDeg: root.moonModel ? root.moonModel.phaseAngleDeg : 0.0
         illumination: root.moonModel ? root.moonModel.illuminationFraction : 0.0
         direction: root.moonModel ? root.moonModel.direction : "waxing"
