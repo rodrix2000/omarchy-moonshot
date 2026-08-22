@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Window
 import qs.Commons
@@ -10,300 +12,171 @@ Window {
   width: 1280
   height: 800
   visible: true
-  color: "#0d1117"
+  color: "#0b0f14"
   flags: Qt.FramelessWindowHint
 
   readonly property string outputPath: String(Qt.resolvedUrl("../../preview.png")).replace(/^file:\/\//, "")
+
+  QtObject {
+    id: previewModel
+
+    property var snapshot: ({ preview: true })
+    property var observation: ({
+      mode: "now",
+      selectedLocalDate: "2026-08-22",
+      localDateTime: "2026-08-22T19:30:00-05:00"
+    })
+    property bool locationConfigured: true
+    property string locationLabel: "Celina, Texas"
+    property real phaseAngleDeg: 122.5
+    property real illuminationFraction: 0.77
+    property real illuminationPercent: 77
+    property string phaseName: "Waxing Gibbous"
+    property string direction: "waxing"
+    property real ageDays: 10.3
+    property var riseEvent: ({ status: "event", localDateTime: "2026-08-22T16:42:00-05:00" })
+    property var setEvent: ({ status: "event", localDateTime: "2026-08-23T01:27:00-05:00" })
+    property bool aboveHorizon: true
+    property real altitudeDeg: 28
+    property var nextMajorPhases: [
+      { quarter: 2, name: "Full Moon", localDateTime: "2026-08-27T23:19:00-05:00", instantUtc: "2026-08-28T04:19:00Z" },
+      { quarter: 3, name: "Last Quarter", localDateTime: "2026-09-04T02:51:00-05:00", instantUtc: "2026-09-04T07:51:00Z" }
+    ]
+    property bool isToday: true
+    property bool loading: false
+    property var lastError: null
+    property bool stale: false
+  }
 
   Item {
     id: scene
     anchors.fill: parent
 
-    // Background desktop
     Rectangle {
       anchors.fill: parent
       gradient: Gradient {
-        GradientStop { position: 0.0; color: "#090d13" }
-        GradientStop { position: 1.0; color: "#161b22" }
+        GradientStop { position: 0.0; color: "#080b10" }
+        GradientStop { position: 0.62; color: "#101722" }
+        GradientStop { position: 1.0; color: "#151b24" }
       }
     }
 
-    // Top Omarchy Bar Simulation
+    // Quiet orbit motif in the desktop context; the plugin itself never
+    // changes the user's wallpaper.
+    Repeater {
+      model: [720, 540, 360]
+      delegate: Rectangle {
+        required property int modelData
+        width: modelData
+        height: width
+        x: 80 - width / 2
+        y: 520 - height / 2
+        radius: width / 2
+        color: "transparent"
+        border.width: 1
+        border.color: "#0bffffff"
+      }
+    }
+
     Rectangle {
       id: barMock
       width: parent.width
       height: 32
-      color: "#f2161b22"
-      border.color: "#1affffff"
+      color: "#f20b0f14"
+      border.color: "#22ffffff"
       border.width: 1
 
       Row {
         anchors.left: parent.left
-        anchors.leftMargin: 16
+        anchors.leftMargin: 18
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 12
+        spacing: 18
 
         Text {
-          text: "1 · 2 · 3"
+          text: "Moonshot"
           font.family: Style.font.family
           font.pixelSize: 12
-          color: "#8b949e"
+          font.bold: true
+          color: "#e8edf2"
+        }
+        Text {
+          text: "1    2    3    4"
+          font.family: Style.font.family
+          font.pixelSize: 12
+          color: "#8d98a5"
         }
       }
 
       Row {
         anchors.right: parent.right
-        anchors.rightMargin: 16
+        anchors.rightMargin: 18
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 16
+        spacing: 18
 
-        // Moonshot Bar Widget Pill
         Rectangle {
-          width: 80
+          width: 74
           height: 24
-          radius: 12
-          color: "#26388bfd"
-          border.color: "#66388bfd"
-          border.width: 1
-          anchors.verticalCenter: parent.verticalCenter
+          radius: 5
+          color: "#102f81f7"
+          border.color: "#643f8cff"
 
           Row {
             anchors.centerIn: parent
-            spacing: 6
+            spacing: 7
             MoonDisk {
-              size: 16
-              phaseAngleDeg: 122.5
-              illumination: 0.77
-              direction: "waxing"
-              hero: false
+              size: 17
+              phaseAngleDeg: previewModel.phaseAngleDeg
+              illumination: previewModel.illuminationFraction
+              direction: previewModel.direction
+              surfaceColor: barMock.color
             }
             Text {
               text: "77%"
               font.family: Style.font.family
               font.pixelSize: 11
               font.bold: true
-              color: "#e6edf3"
+              color: "#e8edf2"
             }
           }
         }
 
         Text {
+          anchors.verticalCenter: parent.verticalCenter
           text: "19:30"
           font.family: Style.font.family
           font.pixelSize: 12
           font.bold: true
-          color: "#e6edf3"
-          anchors.verticalCenter: parent.verticalCenter
+          color: "#e8edf2"
         }
       }
     }
 
-    // Moonshot Panel Display Mockup
-    Rectangle {
+    BorderSurface {
       id: panelMock
-      width: 380
-      height: 540
+      width: 430
+      height: Math.min(738, previewContent.implicitHeight + 36)
       anchors.top: barMock.bottom
       anchors.topMargin: 12
       anchors.right: parent.right
-      anchors.rightMargin: 60
-      radius: 12
-      color: "#161b22"
-      border.color: "#26ffffff"
-      border.width: 1
+      anchors.rightMargin: 42
+      radius: 10
+      color: Color.popups.background
+      borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, 1)
 
-      Column {
-        anchors.fill: parent
+      MoonshotContent {
+        id: previewContent
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.margins: 18
-        spacing: 14
-
-        // 1. Header
-        Item {
-          width: parent.width
-          height: 36
-          Column {
-            anchors.left: parent.left
-            spacing: 2
-            Text {
-              text: "MOONSHOT"
-              font.family: Style.font.family
-              font.pixelSize: 10
-              font.bold: true
-              color: "#58a6ff"
-            }
-            Text {
-              text: "Tonight · Saturday, August 22"
-              font.family: Style.font.family
-              font.pixelSize: 12
-              color: "#e6edf3"
-            }
-          }
-          Column {
-            anchors.right: parent.right
-            spacing: 2
-                        Text {
-              text: "Celina, Texas"
-              font.family: Style.font.family
-              font.pixelSize: 11
-              color: "#e6edf3"
-            }
-            Text {
-              text: "north-up chart"
-              font.family: Style.font.family
-              font.pixelSize: 10
-              color: "#8b949e"
-            }
-          }
-        }
-
-        // 2. Hero Moon Disk & Metrics
-        Column {
-          width: parent.width
-          spacing: 8
-          
-          MoonDisk {
-            anchors.horizontalCenter: parent.horizontalCenter
-            size: 140
-            phaseAngleDeg: 122.5
-            illumination: 0.77
-            direction: "waxing"
-            hero: true
-            renderMode: "realistic"
-          }
-
-          Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Waxing Gibbous · 77%"
-            font.family: Style.font.family
-            font.pixelSize: 16
-            font.bold: true
-            color: "#e6edf3"
-          }
-
-          Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Waxing · 10.3 days old"
-            font.family: Style.font.family
-            font.pixelSize: 12
-            color: "#8b949e"
-          }
-        }
-
-        // 3. Observer Rise / Set Card
-        Rectangle {
-          width: parent.width
-          height: 80
-          radius: 8
-          color: "#0affffff"
-          border.color: "#14ffffff"
-          border.width: 1
-
-          Column {
-            anchors.fill: parent
-            anchors.margins: 10
-            spacing: 6
-
-            Row {
-              width: parent.width
-              Column {
-                width: parent.width / 2
-                spacing: 2
-                Text { text: "Moonrise"; font.family: Style.font.family; font.pixelSize: 10; color: "#8b949e" }
-                Text { text: "4:42 PM"; font.family: Style.font.family; font.pixelSize: 14; font.bold: true; color: "#e6edf3" }
-              }
-              Column {
-                width: parent.width / 2
-                spacing: 2
-                Text { text: "Moonset"; font.family: Style.font.family; font.pixelSize: 10; color: "#8b949e" }
-                Text { text: "1:27 AM"; font.family: Style.font.family; font.pixelSize: 14; font.bold: true; color: "#e6edf3" }
-              }
-            }
-
-            Text {
-              text: "▲ Above horizon · Alt 28.0°"
-              font.family: Style.font.family
-              font.pixelSize: 10
-              color: "#58a6ff"
-            }
-          }
-        }
-
-        // 4. Upcoming Phases
-        Column {
-          width: parent.width
-          spacing: 6
-
-          Text {
-            text: "UPCOMING PHASES"
-            font.family: Style.font.family
-            font.pixelSize: 10
-            font.bold: true
-            color: "#8b949e"
-          }
-
-          Row {
-            width: parent.width
-            Text { width: 120; text: "Full Moon"; font.family: Style.font.family; font.pixelSize: 11; font.bold: true; color: "#e6edf3" }
-            Text { text: "Thu Aug 27 · 11:19 PM"; font.family: Style.font.family; font.pixelSize: 11; color: "#8b949e" }
-          }
-          Row {
-            width: parent.width
-            Text { width: 120; text: "Last Quarter"; font.family: Style.font.family; font.pixelSize: 11; font.bold: true; color: "#e6edf3" }
-            Text { text: "Fri Sep 04 · 2:51 AM"; font.family: Style.font.family; font.pixelSize: 11; color: "#8b949e" }
-          }
-        }
-
-        // 5. Date Controls Mockup
-        Item {
-          width: parent.width
-          height: 28
-
-          Row {
-            anchors.left: parent.left
-            spacing: 8
-            Rectangle { width: 70; height: 26; radius: 6; color: "#14ffffff"; Text { anchors.centerIn: parent; text: "‹ Prev"; font.family: Style.font.family; font.pixelSize: 11; color: "#e6edf3" } }
-            Rectangle { width: 70; height: 26; radius: 6; color: "#40388bfd"; border.color: "#58a6ff"; Text { anchors.centerIn: parent; text: "Today"; font.family: Style.font.family; font.pixelSize: 11; font.bold: true; color: "#e6edf3" } }
-            Rectangle { width: 70; height: 26; radius: 6; color: "#14ffffff"; Text { anchors.centerIn: parent; text: "Next ›"; font.family: Style.font.family; font.pixelSize: 11; color: "#e6edf3" } }
-          }
-
-          Row {
-            anchors.right: parent.right
-            spacing: 8
-            anchors.verticalCenter: parent.verticalCenter
-            Text { text: "🌕"; font.pixelSize: 14 }
-            Text { text: "🌑"; font.pixelSize: 14 }
-          }
-        }
-
-        // 6. Footer
-        Item {
-          width: parent.width
-          height: 24
-
-          Text {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: "Updated just now"
-            font.family: Style.font.family
-            font.pixelSize: 10
-            color: "#8b949e"
-          }
-          Rectangle {
-            anchors.right: parent.right
-            width: 84
-            height: 22
-            radius: 4
-            color: "#14ffffff"
-            Text { anchors.centerIn: parent; text: "📍 Location"; font.family: Style.font.family; font.pixelSize: 10; color: "#e6edf3" }
-          }
-        }
+        model: previewModel
+        settings: ({ renderMode: "realistic", reducedMotion: false, timeFormat: "12h" })
       }
     }
   }
 
   Timer {
-    id: renderTimer
-    interval: 500
+    interval: 900
     running: true
     repeat: false
     onTriggered: {

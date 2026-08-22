@@ -2,6 +2,8 @@
 
 Moonshot bundles and vendors the following third-party software:
 
+The lunar texture in `assets/moon-surface-v2.png` and the design concept in `docs/design/` are project-generated artwork, not copied third-party imagery.
+
 ---
 
 ## Astronomy Engine for Python

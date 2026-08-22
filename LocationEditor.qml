@@ -1,9 +1,10 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
-import QtQuick.Controls as Controls
 import Quickshell
 import Quickshell.Io
 import qs.Commons
-import qs.Ui
+import qs.Ui as Ui
 
 Item {
   id: root
@@ -17,51 +18,168 @@ Item {
   property var searchResults: []
   property bool searchLoading: false
   property string searchError: ""
+  property int searchGeneration: 0
 
   property string editLabel: ""
   property string editLatitude: ""
   property string editLongitude: ""
   property string editTimeZone: ""
   property string editElevation: "0"
-
   property string validationError: ""
+  property string infoMessage: ""
+  property bool saving: false
 
-  Component.onCompleted: {
-    syncFromModel()
-  }
+  implicitWidth: Style.space(390)
+  implicitHeight: editorColumn.implicitHeight
+  focus: visible
+
+  Accessible.role: Accessible.Pane
+  Accessible.name: "Moonshot location settings"
 
   function syncFromModel() {
-    editLabel = model.locationLabel || ""
-    editLatitude = model.latitude !== null && model.latitude !== undefined ? String(model.latitude) : ""
-    editLongitude = model.longitude !== null && model.longitude !== undefined ? String(model.longitude) : ""
-    editTimeZone = model.timeZone || ""
-    editElevation = model.elevationM ? String(model.elevationM) : "0"
-    validationError = ""
+    root.editLabel = root.model.locationLabel || ""
+    root.editLatitude = root.model.latitude !== null && root.model.latitude !== undefined
+      ? String(root.model.latitude) : ""
+    root.editLongitude = root.model.longitude !== null && root.model.longitude !== undefined
+      ? String(root.model.longitude) : ""
+    root.editTimeZone = root.model.timeZone || ""
+    root.editElevation = root.model.elevationM !== null && root.model.elevationM !== undefined
+      ? String(root.model.elevationM) : "0"
+    root.validationError = ""
+    root.infoMessage = ""
+    root.saving = false
   }
 
-  function validateAndSave() {
-    validationError = ""
-    var lat = parseFloat(editLatitude.trim())
-    var lon = parseFloat(editLongitude.trim())
-    var elev = parseFloat(editElevation.trim() || "0")
-
-    if (isNaN(lat) || lat < -90.0 || lat > 90.0) {
-      validationError = "Latitude must be between -90.0 and 90.0"
-      return
-    }
-    if (isNaN(lon) || lon < -180.0 || lon > 180.0) {
-      validationError = "Longitude must be between -180.0 and 180.0"
-      return
-    }
-
-    var tzName = editTimeZone.trim()
-    var label = editLabel.trim() || (lat.toFixed(2) + ", " + lon.toFixed(2))
-
-    model.saveLocation(label, lat, lon, tzName, elev)
+  function cancel() {
+    root.syncFromModel()
     root.closed()
   }
 
+  function validateAndSave() {
+    root.validationError = ""
+    root.infoMessage = ""
+
+    var lat = Number(root.editLatitude.trim())
+    var lon = Number(root.editLongitude.trim())
+    var elev = Number(root.editElevation.trim() || "0")
+    var tzName = root.editTimeZone.trim()
+
+    if (root.editLatitude.trim() === "" || !isFinite(lat) || lat < -90 || lat > 90) {
+      root.validationError = "Latitude must be between −90 and 90."
+      return
+    }
+    if (root.editLongitude.trim() === "" || !isFinite(lon) || lon < -180 || lon > 180) {
+      root.validationError = "Longitude must be between −180 and 180."
+      return
+    }
+    if (!isFinite(elev) || elev < -500 || elev > 9000) {
+      root.validationError = "Elevation must be between −500 and 9,000 meters."
+      return
+    }
+    if (tzName === "" || /\s/.test(tzName)) {
+      root.validationError = "Enter an IANA time zone such as America/Chicago."
+      return
+    }
+
+    var label = root.editLabel.trim() || (lat.toFixed(2) + ", " + lon.toFixed(2))
+    root.saving = true
+    root.model.validateAndSaveLocation(label, lat, lon, tzName, elev)
+  }
+
+  function normalizedSearchResults(doc) {
+    if (!doc || !Array.isArray(doc.results)) return []
+    var out = []
+    for (var i = 0; i < doc.results.length && out.length < 5; i++) {
+      var candidate = doc.results[i]
+      var lat = Number(candidate.latitude)
+      var lon = Number(candidate.longitude)
+      var tz = typeof candidate.timezone === "string" ? candidate.timezone.trim() : ""
+      var name = typeof candidate.name === "string" ? candidate.name.trim() : ""
+      if (!isFinite(lat) || lat < -90 || lat > 90 ||
+          !isFinite(lon) || lon < -180 || lon > 180 || name === "" || tz === "") continue
+      out.push({
+        name: name.substring(0, 96),
+        admin1: typeof candidate.admin1 === "string" ? candidate.admin1.trim().substring(0, 96) : "",
+        country: typeof candidate.country === "string" ? candidate.country.trim().substring(0, 96) : "",
+        latitude: lat,
+        longitude: lon,
+        timezone: tz
+      })
+    }
+    return out
+  }
+
+  function performSearch() {
+    var query = root.searchQuery.trim()
+    root.searchGeneration++
+    var generation = root.searchGeneration
+    if (query.length < 2) {
+      root.searchResults = []
+      root.searchLoading = false
+      return
+    }
+
+    root.searchLoading = true
+    root.searchError = ""
+    var url = "https://geocoding-api.open-meteo.com/v1/search?name="
+      + encodeURIComponent(query) + "&count=5&language=en&format=json"
+    var xhr = new XMLHttpRequest()
+    var oversized = false
+    xhr.open("GET", url, true)
+    xhr.timeout = 5000
+    xhr.onreadystatechange = function() {
+      if (generation !== root.searchGeneration) return
+      if (xhr.readyState === XMLHttpRequest.LOADING) {
+        try {
+          if (xhr.responseText && xhr.responseText.length > 65536) {
+            oversized = true
+            xhr.abort()
+            root.searchLoading = false
+            root.searchError = "The search response was too large."
+          }
+        } catch (e) {}
+        return
+      }
+      if (xhr.readyState !== XMLHttpRequest.DONE) return
+
+      root.searchLoading = false
+      if (oversized) return
+      if (xhr.status !== 200) {
+        root.searchError = "Location search is unavailable. Manual entry still works offline."
+        return
+      }
+      try {
+        if (xhr.responseText.length > 65536) throw new Error("oversized")
+        root.searchResults = root.normalizedSearchResults(JSON.parse(xhr.responseText))
+        if (root.searchResults.length === 0) root.searchError = "No matching cities found."
+      } catch (e) {
+        root.searchResults = []
+        root.searchError = "The location search response was invalid."
+      }
+    }
+    xhr.ontimeout = function() {
+      if (generation !== root.searchGeneration) return
+      root.searchLoading = false
+      root.searchError = "Location search timed out. Manual entry still works offline."
+    }
+    xhr.send()
+  }
+
+  function chooseSearchResult(candidate) {
+    if (!candidate) return
+    root.editLabel = candidate.name + (candidate.country ? ", " + candidate.country : "")
+    root.editLatitude = String(candidate.latitude)
+    root.editLongitude = String(candidate.longitude)
+    root.editTimeZone = candidate.timezone
+    root.editElevation = "0"
+    root.tabMode = "manual"
+    root.infoMessage = "Search result selected. Review the values, then save."
+    Qt.callLater(function() { latitudeField.forceActiveFocus() })
+  }
+
   function importWeather() {
+    root.validationError = ""
+    root.infoMessage = ""
     weatherFile.reload()
   }
 
@@ -71,118 +189,134 @@ Item {
     printErrors: false
     onLoaded: {
       try {
-        var raw = text()
-        if (!raw) return
-        var data = JSON.parse(raw)
-        if (data && data.latitude !== undefined && data.longitude !== undefined) {
-          root.editLatitude = String(data.latitude)
-          root.editLongitude = String(data.longitude)
-          if (data.name) root.editLabel = String(data.name)
-          root.tabMode = "manual"
-          root.validationError = "Imported from Omarchy Weather"
-        }
+        var data = JSON.parse(text())
+        if (!data || data.latitude === undefined || data.longitude === undefined)
+          throw new Error("missing coordinates")
+        root.editLatitude = String(data.latitude)
+        root.editLongitude = String(data.longitude)
+        if (data.name) root.editLabel = String(data.name)
+        if (data.timezone) root.editTimeZone = String(data.timezone)
+        root.tabMode = "manual"
+        root.infoMessage = root.editTimeZone === ""
+          ? "Weather coordinates imported. Add the location’s IANA time zone before saving."
+          : "Weather location imported. Review the values before saving."
       } catch (e) {
-        root.validationError = "Could not read weather settings"
+        root.validationError = "Omarchy Weather does not have importable coordinates."
       }
     }
+    onLoadFailed: root.validationError = "Omarchy Weather does not have a saved location."
   }
 
   Timer {
     id: searchDebounce
-    interval: 400
+    interval: 350
     repeat: false
-    onTriggered: {
-      performSearch()
+    onTriggered: root.performSearch()
+  }
+
+  Connections {
+    target: root.model
+    function onLocationSaveFinished(success, message) {
+      root.saving = false
+      if (success) root.closed()
+      else root.validationError = message || "The location could not be validated."
     }
   }
 
-  function performSearch() {
-    var q = searchQuery.trim()
-    if (q.length < 2) {
-      searchResults = []
-      searchLoading = false
-      return
-    }
-    searchLoading = true
-    searchError = ""
+  Keys.onEscapePressed: function(event) {
+    root.cancel()
+    event.accepted = true
+  }
 
-    var url = "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(q) + "&count=5&language=en&format=json"
-    var xhr = new XMLHttpRequest()
-    xhr.open("GET", url, true)
-    xhr.timeout = 5000
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState === XMLHttpRequest.DONE) {
-        searchLoading = false
-        if (xhr.status === 200) {
-          try {
-            var doc = JSON.parse(xhr.responseText)
-            if (doc && doc.results && doc.results.length > 0) {
-              searchResults = doc.results
-            } else {
-              searchResults = []
-              searchError = "No matching cities found."
-            }
-          } catch (e) {
-            searchError = "Failed to parse search results."
-          }
-        } else {
-          searchError = "Network error searching locations."
-        }
-      }
-    }
-    xhr.ontimeout = function() {
-      searchLoading = false
-      searchError = "Search timed out."
-    }
-    xhr.send()
+  onVisibleChanged: {
+    if (!visible) return
+    root.syncFromModel()
+    Qt.callLater(function() {
+      if (root.tabMode === "search") searchField.forceActiveFocus()
+      else latitudeField.forceActiveFocus()
+    })
   }
 
   Column {
-    anchors.fill: parent
+    id: editorColumn
+    width: parent.width
     spacing: Style.spacing.rowGap
 
-    // Mode Tabs & Close Button
     Item {
       width: parent.width
-      height: tabRow.implicitHeight
+      height: Math.max(editorTitle.implicitHeight, cancelButton.implicitHeight)
 
-      Row {
-        id: tabRow
+      Column {
+        id: editorTitle
         anchors.left: parent.left
-        spacing: Style.spacing.controlGap
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: Style.space(2)
 
-        Button {
-          text: "City Search"
-          selected: root.tabMode === "search"
-          onClicked: { root.tabMode = "search" }
+        Text {
+          text: "Location"
+          color: Color.popups.text
+          font.family: Style.font.family
+          font.pixelSize: Style.font.title
+          font.bold: true
         }
-
-        Button {
-          text: "Manual Coordinates"
-          selected: root.tabMode === "manual"
-          onClicked: { root.tabMode = "manual" }
+        Text {
+          text: "Coordinates stay local. City search is optional."
+          color: Color.muted
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
         }
       }
 
-      Button {
+      Ui.Button {
+        id: cancelButton
         anchors.right: parent.right
-        text: "✕"
-        tooltipText: "Cancel (Esc)"
-        onClicked: { root.syncFromModel(); root.closed() }
+        anchors.verticalCenter: parent.verticalCenter
+        text: "Cancel"
+        focusable: true
+        foreground: Color.popups.text
+        onClicked: root.cancel()
       }
     }
 
-    // Search Tab
+    Ui.PanelSeparator { foreground: Color.popups.text }
+
+    Row {
+      spacing: Style.spacing.controlGap
+
+      Ui.Button {
+        text: "City search"
+        selected: root.tabMode === "search"
+        focusable: true
+        foreground: Color.popups.text
+        onClicked: {
+          root.tabMode = "search"
+          Qt.callLater(searchField.forceActiveFocus)
+        }
+      }
+      Ui.Button {
+        text: "Manual coordinates"
+        selected: root.tabMode === "manual"
+        focusable: true
+        foreground: Color.popups.text
+        onClicked: {
+          root.tabMode = "manual"
+          Qt.callLater(latitudeField.forceActiveFocus)
+        }
+      }
+    }
+
     Column {
       width: parent.width
       visible: root.tabMode === "search"
       spacing: Style.spacing.sm
 
-      TextField {
+      Ui.TextField {
         id: searchField
         width: parent.width
-        placeholderText: "Type a city (e.g. Dallas, London, Tokyo)..."
+        foreground: Color.popups.text
+        placeholderText: "Search city or town"
         text: root.searchQuery
+        Accessible.name: "City search"
         onTextChanged: {
           root.searchQuery = text
           searchDebounce.restart()
@@ -190,53 +324,55 @@ Item {
       }
 
       Text {
-        text: "Search queries Open-Meteo Geocoding API via HTTPS."
+        width: parent.width
+        wrapMode: Text.WordWrap
+        text: "Search sends this query to Open-Meteo over HTTPS. Core astronomy never uses the network."
+        color: Color.muted
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
-        color: Color.muted
       }
 
       Text {
         visible: root.searchLoading
-        text: "Searching..."
-        font.family: Style.font.family
-        font.pixelSize: Style.font.caption
+        text: "Searching…"
         color: Color.accent
+        font.family: Style.font.family
+        font.pixelSize: Style.font.bodySmall
       }
 
       Text {
+        width: parent.width
         visible: root.searchError !== ""
+        wrapMode: Text.WordWrap
         text: root.searchError
-        font.family: Style.font.family
-        font.pixelSize: Style.font.caption
         color: Color.urgent
+        font.family: Style.font.family
+        font.pixelSize: Style.font.bodySmall
       }
 
       Column {
         width: parent.width
-        spacing: 2
+        spacing: Style.space(2)
         visible: root.searchResults.length > 0
 
         Repeater {
           model: root.searchResults
-          delegate: Button {
+          delegate: Ui.Button {
+            id: resultButton
             required property var modelData
             width: parent.width
             leftAlign: true
-            text: modelData.name + (modelData.admin1 ? ", " + modelData.admin1 : "") + (modelData.country ? ", " + modelData.country : "")
-            onClicked: {
-              root.editLabel = modelData.name + (modelData.country ? ", " + modelData.country : "")
-              root.editLatitude = String(modelData.latitude)
-              root.editLongitude = String(modelData.longitude)
-              root.editTimeZone = modelData.timezone || ""
-              root.validateAndSave()
-            }
+            focusable: true
+            foreground: Color.popups.text
+            text: resultButton.modelData.name
+              + (resultButton.modelData.admin1 ? ", " + resultButton.modelData.admin1 : "")
+              + (resultButton.modelData.country ? ", " + resultButton.modelData.country : "")
+            onClicked: root.chooseSearchResult(resultButton.modelData)
           }
         }
       }
     }
 
-    // Manual Coordinates Tab
     Column {
       width: parent.width
       visible: root.tabMode === "manual"
@@ -248,110 +384,167 @@ Item {
 
         Column {
           width: (parent.width - Style.spacing.controlGap) / 2
-          spacing: 2
+          spacing: Style.space(2)
           Text {
             text: "Latitude"
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            color: Color.foreground
           }
-          TextField {
+          Ui.TextField {
+            id: latitudeField
             width: parent.width
+            foreground: Color.popups.text
             placeholderText: "33.0"
             text: root.editLatitude
-            onTextChanged: { root.editLatitude = text }
+            Accessible.name: "Latitude"
+            onTextChanged: root.editLatitude = text
           }
         }
 
         Column {
           width: (parent.width - Style.spacing.controlGap) / 2
-          spacing: 2
+          spacing: Style.space(2)
           Text {
             text: "Longitude"
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            color: Color.foreground
           }
-          TextField {
+          Ui.TextField {
             width: parent.width
-            placeholderText: "-96.0"
+            foreground: Color.popups.text
+            placeholderText: "−96.0"
             text: root.editLongitude
-            onTextChanged: { root.editLongitude = text }
+            Accessible.name: "Longitude"
+            onTextChanged: root.editLongitude = text
           }
         }
       }
 
       Column {
         width: parent.width
-        spacing: 2
+        spacing: Style.space(2)
         Text {
-          text: "IANA Time Zone (optional)"
+          text: "IANA time zone"
+          color: Color.popups.text
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: Color.foreground
         }
-        TextField {
+        Ui.TextField {
           width: parent.width
-          placeholderText: "America/Chicago (leave blank for local system)"
+          foreground: Color.popups.text
+          placeholderText: "America/Chicago"
           text: root.editTimeZone
-          onTextChanged: { root.editTimeZone = text }
+          Accessible.name: "IANA time zone"
+          onTextChanged: root.editTimeZone = text
         }
       }
 
-      Column {
+      Row {
         width: parent.width
-        spacing: 2
-        Text {
-          text: "Label (optional)"
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          color: Color.foreground
-        }
-        TextField {
-          width: parent.width
-          placeholderText: "Home, Celina, TX"
-          text: root.editLabel
-          onTextChanged: { root.editLabel = text }
-        }
-      }
+        spacing: Style.spacing.controlGap
 
-      Text {
-        visible: root.validationError !== ""
-        text: root.validationError
-        font.family: Style.font.family
-        font.pixelSize: Style.font.caption
-        color: Color.urgent
+        Column {
+          width: parent.width * 0.66
+          spacing: Style.space(2)
+          Text {
+            text: "Label"
+            color: Color.popups.text
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Ui.TextField {
+            width: parent.width
+            foreground: Color.popups.text
+            placeholderText: "Home"
+            text: root.editLabel
+            Accessible.name: "Location label"
+            onTextChanged: root.editLabel = text
+          }
+        }
+
+        Column {
+          width: parent.width - parent.children[0].width - Style.spacing.controlGap
+          spacing: Style.space(2)
+          Text {
+            text: "Elevation (m)"
+            color: Color.popups.text
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Ui.TextField {
+            width: parent.width
+            foreground: Color.popups.text
+            placeholderText: "0"
+            text: root.editElevation
+            Accessible.name: "Elevation in meters"
+            onTextChanged: root.editElevation = text
+          }
+        }
       }
     }
 
-    // Action Buttons Row
+    Text {
+      width: parent.width
+      visible: root.infoMessage !== ""
+      wrapMode: Text.WordWrap
+      text: root.infoMessage
+      color: Color.accent
+      font.family: Style.font.family
+      font.pixelSize: Style.font.bodySmall
+    }
+
+    Text {
+      width: parent.width
+      visible: root.validationError !== ""
+      wrapMode: Text.WordWrap
+      text: root.validationError
+      color: Color.urgent
+      font.family: Style.font.family
+      font.pixelSize: Style.font.bodySmall
+      Accessible.role: Accessible.AlertMessage
+    }
+
+    Ui.PanelSeparator { foreground: Color.popups.text }
+
     Item {
       width: parent.width
-      height: leftActions.implicitHeight
+      height: Math.max(leftActions.implicitHeight, saveButton.implicitHeight)
 
       Row {
         id: leftActions
         anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
         spacing: Style.spacing.controlGap
 
-        Button {
+        Ui.Button {
           text: "Import Weather"
-          tooltipText: "Import coordinates from Omarchy Weather"
-          onClicked: { root.importWeather() }
+          focusable: true
+          foreground: Color.popups.text
+          onClicked: root.importWeather()
         }
-
-        Button {
-          text: "Clear Location"
-          tooltipText: "Reset to unconfigured global mode"
-          onClicked: { root.model.clearLocation(); root.closed() }
+        Ui.Button {
+          text: "Clear"
+          focusable: true
+          foreground: Color.popups.text
+          onClicked: {
+            root.model.clearLocation()
+            root.closed()
+          }
         }
       }
 
-      Button {
+      Ui.Button {
+        id: saveButton
         anchors.right: parent.right
-        text: "Save"
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.saving ? "Validating…" : "Save location"
         selected: true
-        onClicked: { root.validateAndSave() }
+        enabled: !root.saving
+        focusable: true
+        foreground: Color.popups.text
+        onClicked: root.validateAndSave()
       }
     }
   }

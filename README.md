@@ -9,7 +9,7 @@ Moonshot places a living lunar indicator in the Omarchy bar and opens a calm, lo
 ## Features
 
 - **Living Bar Indicator:** Optically centered lunar disk in the status bar with selectable modes (`disk`, `illumination`, `phase`, `next-full`, `moonrise`).
-- **Detailed Lunar Panel:** Clean modal panel with procedural Canvas lunar rendering, illumination stats, waxing/waning direction, and moon age in days.
+- **Detailed Lunar Panel:** A realistic, texture-backed north-up lunar disk with a computed phase terminator, illumination stats, direction, and moon age.
 - **Accurate Astronomical Ephemeris:** Offline computation powered by Astronomy Engine with validated USNO/NASA golden data.
 - **Local Rise, Set & Horizon:** Precise local-day rise and set calculations with upper-limb and refraction corrections.
 - **Date Browsing:** Step through past or future dates with smooth transitions and quick jumps back to Today or the next Full/New Moon.
@@ -41,12 +41,13 @@ omarchy bar move io.github.rodrix2000.moonshot --section right
 
 - **Click Bar Icon:** Toggle the Moonshot panel.
 - **Middle-Click Bar Icon:** Force recalculation and refresh.
+- **Right-Click Bar Icon:** Cycle the bar display mode for the current shell session.
 - **Keyboard Shortcuts (inside panel):**
   - <kbd>Left</kbd> / <kbd>Right</kbd>: Previous / Next day
   - <kbd>T</kbd>: Jump to Today (current instant)
   - <kbd>F</kbd>: Jump to next Full Moon
   - <kbd>N</kbd>: Jump to next New Moon
-  - <kbd>L</kbd>: Open Location Editor
+  - <kbd>Shift</kbd>+<kbd>L</kbd>: Open Location Editor (`l` remains Vim-style Next day)
   - <kbd>R</kbd>: Refresh calculations
   - <kbd>Escape</kbd>: Close Location Editor or dismiss Panel
 
@@ -56,10 +57,13 @@ omarchy bar move io.github.rodrix2000.moonshot --section right
 - **No Location Mode:** If unconfigured, global moon phase, illumination, and age are computed immediately without needing coordinates.
 - **Manual Mode:** Provide your latitude, longitude, and IANA time zone directly for 100% offline rise/set computation.
 - **City Search:** Optional geocoding queries Open-Meteo over HTTPS. No location data is sent in the background.
+- **Local State:** A validated location is stored atomically in `${XDG_STATE_HOME:-$HOME/.local/state}/moonshot/settings-v1.json` with user-only permissions. Host-provided plugin settings take precedence when present.
 
 ## Rendering Convention
 
-> **Note:** Moonshot v1 renders the lunar disk using a standard north-up astronomical chart convention (waxing light on right, waning on left). It accurately depicts illumination and phase direction but does not simulate local horizon disc rotation.
+> **Note:** Moonshot v1 renders the lunar disk using a standard north-up astronomical chart convention (waxing light on right, waning on left). The phase silhouette is computed, while the neutral lunar albedo texture is illustrative rather than a scientific surface map. Local horizon disc rotation is not simulated.
+
+The panel uses Omarchy semantic surface, text, accent, muted, urgent, spacing, border, and focus tokens. The lunar texture stays neutral so it remains recognizable across light, dark, tinted, and high-contrast themes; theme color is limited to surrounding glow, rim, controls, and text.
 
 ## Updating
 
@@ -77,7 +81,6 @@ To clean up local state cache:
 
 ```bash
 rm -rf "${XDG_STATE_HOME:-$HOME/.local/state}/moonshot"
-rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/moonshot"
 ```
 
 ## Third-Party Software

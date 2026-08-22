@@ -5,12 +5,14 @@
 ```bash
 python3 scripts/moonshot_ephemeris.py snapshot \
   --request-id <generation-id> \
+  --mode <auto|now|browse|event> \
   --instant-utc <ISO-8601-UTC> \
   --selected-date <YYYY-MM-DD> \
   --timezone <IANA-Timezone> \
   [--latitude <float>] \
   [--longitude <float>] \
-  [--elevation-m <float>]
+  [--elevation-m <float>] \
+  [--location-label <label>]
 ```
 
 ## Response Schema (Protocol v1)

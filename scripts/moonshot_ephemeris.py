@@ -375,8 +375,34 @@ def compute_snapshot(
     longitude: Optional[float],
     elevation_m: float = 0.0,
     location_label: str = "",
+    observation_mode: str = "auto",
 ) -> Dict[str, Any]:
     """Compute full ephemeris snapshot."""
+    request_id = str(request_id or "")[:64]
+    observation_mode = str(observation_mode or "auto").strip().lower()
+    if observation_mode not in {"auto", "now", "browse", "event"}:
+        return {
+            "protocolVersion": PROTOCOL_VERSION,
+            "requestId": request_id,
+            "status": "error",
+            "error": {
+                "code": "INVALID_MODE",
+                "message": "Observation mode must be auto, now, browse, or event.",
+            },
+        }
+
+    location_label = str(location_label or "").strip()
+    if len(location_label) > 128:
+        return {
+            "protocolVersion": PROTOCOL_VERSION,
+            "requestId": request_id,
+            "status": "error",
+            "error": {
+                "code": "INVALID_LOCATION",
+                "message": "Location labels must be 128 characters or fewer.",
+            },
+        }
+
     if timezone_name:
         try:
             tz = zoneinfo.ZoneInfo(timezone_name)
@@ -387,35 +413,57 @@ def compute_snapshot(
                 "status": "error",
                 "error": {
                     "code": "INVALID_TIME_ZONE",
-                    "message": f"Unknown or invalid IANA time zone: {timezone_name}",
+                    "message": "The requested IANA time zone is unavailable.",
                 },
             }
     else:
         tz = get_system_timezone()
         timezone_name = tz.key if hasattr(tz, "key") else str(tz)
 
+    if (latitude is None) != (longitude is None):
+        return {
+            "protocolVersion": PROTOCOL_VERSION,
+            "requestId": request_id,
+            "status": "error",
+            "error": {
+                "code": "INVALID_COORDINATES",
+                "message": "Latitude and longitude must be provided together.",
+            },
+        }
+
     has_coords = latitude is not None and longitude is not None
     if has_coords:
-        if not (-90.0 <= latitude <= 90.0):
+        if not math.isfinite(latitude) or not (-90.0 <= latitude <= 90.0):
             return {
                 "protocolVersion": PROTOCOL_VERSION,
                 "requestId": request_id,
                 "status": "error",
                 "error": {
                     "code": "INVALID_COORDINATES",
-                    "message": f"Latitude out of bounds [-90, 90]: {latitude}",
+                    "message": "Latitude must be finite and within [-90, 90].",
                 },
             }
-        if not (-180.0 <= longitude <= 180.0):
+        if not math.isfinite(longitude) or not (-180.0 <= longitude <= 180.0):
             return {
                 "protocolVersion": PROTOCOL_VERSION,
                 "requestId": request_id,
                 "status": "error",
                 "error": {
                     "code": "INVALID_COORDINATES",
-                    "message": f"Longitude out of bounds [-180, 180]: {longitude}",
+                    "message": "Longitude must be finite and within [-180, 180].",
                 },
             }
+
+    if not math.isfinite(elevation_m) or not (-500.0 <= elevation_m <= 9000.0):
+        return {
+            "protocolVersion": PROTOCOL_VERSION,
+            "requestId": request_id,
+            "status": "error",
+            "error": {
+                "code": "INVALID_ELEVATION",
+                "message": "Elevation must be finite and within [-500, 9000] meters.",
+            },
+        }
 
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     if instant_utc:
@@ -423,14 +471,14 @@ def compute_snapshot(
             dt_utc = datetime.datetime.fromisoformat(
                 instant_utc.replace("Z", "+00:00")
             ).astimezone(datetime.timezone.utc)
-        except Exception as exc:
+        except Exception:
             return {
                 "protocolVersion": PROTOCOL_VERSION,
                 "requestId": request_id,
                 "status": "error",
                 "error": {
                     "code": "INVALID_INSTANT",
-                    "message": f"Invalid ISO 8601 instant string '{instant_utc}': {exc}",
+                    "message": "The observation instant is not valid ISO 8601 UTC.",
                 },
             }
     else:
@@ -442,23 +490,43 @@ def compute_snapshot(
     if selected_date:
         try:
             target_date = datetime.date.fromisoformat(selected_date)
-        except Exception as exc:
+        except Exception:
             return {
                 "protocolVersion": PROTOCOL_VERSION,
                 "requestId": request_id,
                 "status": "error",
                 "error": {
                     "code": "INVALID_DATE",
-                    "message": f"Invalid selected date '{selected_date}': {exc}",
+                    "message": "The selected date is not a valid ISO calendar date.",
                 },
             }
     else:
         target_date = local_today
 
-    if target_date == local_today and (instant_utc is None or abs((dt_utc - now_utc).total_seconds()) < 300):
-        mode = "now"
+    if observation_mode == "event":
+        if instant_utc is None:
+            return {
+                "protocolVersion": PROTOCOL_VERSION,
+                "requestId": request_id,
+                "status": "error",
+                "error": {
+                    "code": "INVALID_INSTANT",
+                    "message": "Event mode requires an exact UTC instant.",
+                },
+            }
+        mode = "event"
         effective_dt_utc = dt_utc
         effective_dt_local = dt_local
+        target_date = effective_dt_local.date()
+    elif observation_mode == "now" or (
+        observation_mode == "auto"
+        and target_date == local_today
+        and (instant_utc is None or abs((dt_utc - now_utc).total_seconds()) < 300)
+    ):
+        mode = "now"
+        effective_dt_utc = now_utc if instant_utc is None else dt_utc
+        effective_dt_local = effective_dt_utc.astimezone(tz)
+        target_date = effective_dt_local.date()
     else:
         mode = "browse"
         effective_dt_local = datetime.datetime.combine(
@@ -562,6 +630,12 @@ def main() -> None:
     snap_p.add_argument("--longitude", type=float, default=None, help="Observer longitude (-180 to 180).")
     snap_p.add_argument("--elevation-m", type=float, default=0.0, help="Observer elevation in meters.")
     snap_p.add_argument("--location-label", default="", help="User-facing location label.")
+    snap_p.add_argument(
+        "--mode",
+        choices=("auto", "now", "browse", "event"),
+        default="auto",
+        help="Observation selection mode.",
+    )
 
     subparsers.add_parser("version", help="Print version information.")
     subparsers.add_parser("self-test", help="Run self tests and verify engine.")
@@ -596,20 +670,21 @@ def main() -> None:
                 longitude=args.longitude,
                 elevation_m=args.elevation_m,
                 location_label=args.location_label,
+                observation_mode=args.mode,
             )
             if res.get("status") == "error":
                 print(json.dumps(res, indent=2), file=sys.stderr)
                 sys.exit(1)
             print(json.dumps(res, indent=2))
             sys.exit(0)
-        except Exception as exc:
+        except Exception:
             err_doc = {
                 "protocolVersion": PROTOCOL_VERSION,
                 "requestId": args.request_id,
                 "status": "error",
                 "error": {
                     "code": "ASTRONOMY_CALCULATION",
-                    "message": f"Ephemeris calculation failed: {exc}",
+                    "message": "The lunar ephemeris could not be calculated.",
                 },
             }
             print(json.dumps(err_doc, indent=2), file=sys.stderr)

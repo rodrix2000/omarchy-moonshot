@@ -11,10 +11,10 @@ validate-plugin:
 	omarchy plugin validate .
 
 format-check:
-	@echo "format-check: OK"
+	./scripts/format-check.sh
 
 lint: qml-check
-	$(PYTHON) -m py_compile scripts/moonshot_ephemeris.py
+	PYTHONPYCACHEPREFIX=/tmp/moonshot-lint-pycache $(PYTHON) -m py_compile scripts/moonshot_ephemeris.py
 	@echo "lint: OK"
 
 qml-check:
@@ -30,15 +30,13 @@ test-protocol:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest tests/test_protocol.py tests/test_timezones.py -v
 
 test-qml: qml-check
-	@if [ -f tests/qml/RenderSmoke.qml ]; then \
-	  QT_QPA_PLATFORM=minimal /usr/lib/qt6/bin/qmlscene tests/qml/RenderSmoke.qml 2>/dev/null || true; \
-	fi
+	./scripts/qml-runtime-check.sh
 
 test-integration:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s tests -v
 
 test-accessibility:
-	@echo "test-accessibility: verified keyboard and visible focus mapping"
+	./scripts/accessibility-check.sh
 
 test-performance:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest tests/test_performance.py -v

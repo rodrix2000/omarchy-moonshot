@@ -15,7 +15,10 @@ cp -a "$omarchy_path/shell/Commons" "$stage_dir/repo/Commons"
 cp -a "$omarchy_path/shell/Ui" "$stage_dir/repo/Ui"
 
 cp "$stage_dir/repo/tests/qml/PreviewScene.qml" "$stage_dir/repo/shell.qml"
-sed -i -e 's#../../preview.png#preview.png#g' "$stage_dir/repo/shell.qml"
+sed -i \
+  -e 's#import "../../"#import "."#g' \
+  -e 's#../../preview.png#preview.png#g' \
+  "$stage_dir/repo/shell.qml"
 
 env -u GDK_BACKEND -u WAYLAND_DISPLAY -u QT_QPA_PLATFORMTHEME \
   QT_QPA_PLATFORM=offscreen \

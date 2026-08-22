@@ -39,6 +39,29 @@ class TestProtocol(unittest.TestCase):
         self.assertEqual(res.returncode, 1)
         self.assertIn("INVALID_COORDINATES", res.stderr)
 
+    def test_partial_coordinates_error(self):
+        res = self.run_cli("snapshot", "--latitude", "33.0")
+        self.assertEqual(res.returncode, 1)
+        self.assertIn("INVALID_COORDINATES", res.stderr)
+
+    def test_invalid_elevation_error(self):
+        res = self.run_cli("snapshot", "--elevation-m", "10000")
+        self.assertEqual(res.returncode, 1)
+        self.assertIn("INVALID_ELEVATION", res.stderr)
+
+    def test_errors_do_not_echo_private_inputs(self):
+        private_value = "Private-Home-Coordinate-Label"
+        res = self.run_cli(
+            "snapshot",
+            "--timezone",
+            private_value,
+            "--location-label",
+            private_value,
+        )
+        self.assertEqual(res.returncode, 1)
+        self.assertIn("INVALID_TIME_ZONE", res.stderr)
+        self.assertNotIn(private_value, res.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

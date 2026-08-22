@@ -1,11 +1,13 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import "../../"
 
 Rectangle {
   id: root
-  width: 640
-  height: 480
+  width: 760
+  height: 420
   color: "#101315"
 
   Grid {
@@ -16,16 +18,18 @@ Rectangle {
     Repeater {
       model: [0, 45, 90, 135, 180, 225, 270, 315]
       delegate: Column {
+        id: phaseCell
+        required property real modelData
         spacing: 6
         MoonDisk {
           size: 64
-          phaseAngleDeg: modelData
-          illumination: Math.abs(180 - modelData) / 180.0
-          direction: modelData < 180 ? "waxing" : "waning"
+          phaseAngleDeg: phaseCell.modelData
+          illumination: (1 - Math.cos(phaseCell.modelData * Math.PI / 180)) / 2
+          direction: phaseCell.modelData < 180 ? "waxing" : "waning"
           hero: true
         }
         Text {
-          text: modelData + "°"
+          text: phaseCell.modelData + "°"
           color: "#e6edf3"
           anchors.horizontalCenter: parent.horizontalCenter
         }

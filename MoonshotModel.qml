@@ -1,27 +1,29 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.Commons
 
 Item {
   id: root
 
   property var settings: ({})
 
-  // Date selection state
-  property int dateOffsetDays: 0
+  // Observation selection. Calendar browsing stays independent of the
+  // machine's current UTC offset, and event jumps retain their exact instant.
+  property string selectionMode: "now"
   property string selectedLocalDate: ""
-  property bool isToday: dateOffsetDays === 0
+  property string selectedInstantUtc: ""
+  readonly property bool isToday: root.selectionMode === "now"
 
-  // Location configuration state
+  // Location configuration.
   property bool locationConfigured: false
   property string locationLabel: ""
   property var latitude: null
   property var longitude: null
   property real elevationM: 0.0
   property string timeZone: ""
+  property var pendingLocation: null
 
-  // Ephemeris Snapshot Data (Last-good)
+  // Ephemeris snapshot (last-good).
   property var snapshot: null
   readonly property var observation: snapshot ? snapshot.observation : null
   readonly property var moon: snapshot ? snapshot.moon : null
@@ -29,10 +31,9 @@ Item {
   readonly property var events: snapshot ? snapshot.events : null
   readonly property var nextMajorPhases: events && events.nextMajorPhases ? events.nextMajorPhases : []
 
-  // Derived metrics with safe fallbacks
   readonly property real phaseAngleDeg: moon ? moon.phaseAngleDeg : 0.0
-  readonly property string phaseName: moon ? moon.phaseName : "Loading..."
-  readonly property string direction: moon ? moon.direction : "waxing"
+  readonly property string phaseName: moon ? moon.phaseName : "Loading…"
+  readonly property string direction: moon ? moon.direction : "neutral"
   readonly property real illuminationFraction: moon ? moon.illuminationFraction : 0.0
   readonly property real illuminationPercent: moon ? moon.illuminationPercent : 0.0
   readonly property real ageDays: moon ? moon.ageDays : 0.0
@@ -46,121 +47,99 @@ Item {
   readonly property var lastError: client.lastError
   readonly property bool stale: lastError !== null && snapshot !== null
 
+  readonly property string homeDir: Quickshell.env("HOME") || ""
+  readonly property string stateHome: Quickshell.env("XDG_STATE_HOME")
+    || (root.homeDir !== "" ? root.homeDir + "/.local/state" : "")
+  readonly property string settingsStateDir: root.stateHome !== "" ? root.stateHome + "/moonshot" : ""
+  readonly property string settingsStatePath: root.settingsStateDir !== ""
+    ? root.settingsStateDir + "/settings-v1.json" : ""
+  property bool settingsLoaded: false
+
   signal dataUpdated()
+  signal locationSaveFinished(bool success, string message)
 
-  property string settingsStatePath: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/moonshot/settings-v1.json"
-
-  // Astronomy Engine Subprocess Client
   AstronomyClient {
     id: client
+
     onSnapshotReceived: function(data) {
-      root.snapshot = data
-      if (data.observation && data.observation.selectedLocalDate) {
-        root.selectedLocalDate = data.observation.selectedLocalDate
+      if (root.pendingLocation !== null) {
+        var accepted = root.pendingLocation
+        root.pendingLocation = null
+        root.applyLocation(accepted)
+        root.saveSettingsState()
+        root.locationSaveFinished(true, "")
       }
+
+      root.snapshot = data
+      if (data.observation && data.observation.selectedLocalDate)
+        root.selectedLocalDate = data.observation.selectedLocalDate
       root.dataUpdated()
     }
+
+    onErrorOccurred: function(error) {
+      if (root.pendingLocation === null) return
+      root.pendingLocation = null
+      root.locationSaveFinished(false, error && error.message
+        ? error.message : "The location could not be validated.")
+    }
   }
 
-  // Load persistent location settings from XDG state on init
-  Component.onCompleted: {
-    loadSettings()
-    refresh()
+  function finiteNumber(value) {
+    if (value === null || value === undefined) return false
+    if (typeof value === "string" && value.trim() === "") return false
+    var n = Number(value)
+    return isFinite(n)
   }
 
-  function loadSettings() {
-    try {
-      if (settings && settings.latitude !== undefined && settings.latitude !== null) {
-        root.latitude = parseFloat(settings.latitude)
-        root.longitude = parseFloat(settings.longitude)
-        root.locationLabel = settings.locationLabel || "Custom Location"
-        root.timeZone = settings.timeZone || ""
-        root.elevationM = settings.elevationM ? parseFloat(settings.elevationM) : 0.0
-        root.locationConfigured = true
+  function validLocationRecord(record) {
+    if (!record || record.locationConfigured !== true) return false
+    if (!root.finiteNumber(record.latitude) || Number(record.latitude) < -90 || Number(record.latitude) > 90) return false
+    if (!root.finiteNumber(record.longitude) || Number(record.longitude) < -180 || Number(record.longitude) > 180) return false
+    if (!root.finiteNumber(record.elevationM) || Number(record.elevationM) < -500 || Number(record.elevationM) > 9000) return false
+    if (record.locationLabel !== undefined && String(record.locationLabel).length > 128) return false
+    return typeof record.timeZone === "string" && record.timeZone.trim() !== ""
+  }
+
+  function applyLocation(record) {
+    root.locationConfigured = record && record.locationConfigured === true
+    root.locationLabel = root.locationConfigured ? String(record.locationLabel || "Custom location") : ""
+    root.latitude = root.locationConfigured ? Number(record.latitude) : null
+    root.longitude = root.locationConfigured ? Number(record.longitude) : null
+    root.timeZone = root.locationConfigured ? String(record.timeZone || "") : ""
+    root.elevationM = root.locationConfigured ? Number(record.elevationM || 0) : 0.0
+  }
+
+  function hydrateSettings(raw) {
+    if (root.settingsLoaded) return
+
+    var record = null
+    if (root.settings && root.settings.latitude !== undefined && root.settings.latitude !== null) {
+      record = {
+        locationConfigured: true,
+        locationLabel: root.settings.locationLabel || "Custom location",
+        latitude: root.settings.latitude,
+        longitude: root.settings.longitude,
+        timeZone: root.settings.timeZone || "",
+        elevationM: root.settings.elevationM || 0
       }
-    } catch (e) {}
-  }
-
-  function computeTargetDateString() {
-    var d = new Date()
-    if (root.dateOffsetDays !== 0) {
-      d.setDate(d.getDate() + root.dateOffsetDays)
-    }
-    var yyyy = d.getFullYear()
-    var mm = String(d.getMonth() + 1).padStart(2, '0')
-    var dd = String(d.getDate()).padStart(2, '0')
-    return yyyy + "-" + mm + "-" + dd
-  }
-
-  function refresh() {
-    var targetDate = computeTargetDateString()
-    var opts = {
-      selectedDate: targetDate,
-      timeZone: root.timeZone || undefined,
-      latitude: root.locationConfigured ? root.latitude : null,
-      longitude: root.locationConfigured ? root.longitude : null,
-      elevationM: root.locationConfigured ? root.elevationM : 0.0,
-      locationLabel: root.locationLabel
-    }
-    client.requestSnapshot(opts)
-  }
-
-  function stepDate(delta) {
-    root.dateOffsetDays += delta
-    root.refresh()
-  }
-
-  function jumpToToday() {
-    root.dateOffsetDays = 0
-    root.refresh()
-  }
-
-  function jumpToPhase(quarterNum) {
-    if (!root.nextMajorPhases || root.nextMajorPhases.length === 0) return
-    for (var i = 0; i < root.nextMajorPhases.length; i++) {
-      var ev = root.nextMajorPhases[i]
-      if (ev.quarter === quarterNum) {
-        if (ev.localDateTime) {
-          var targetDateStr = ev.localDateTime.split("T")[0]
-          var now = new Date()
-          var target = new Date(targetDateStr + "T12:00:00")
-          var diffTime = target.getTime() - now.getTime()
-          var diffDays = Math.round(diffTime / (1000 * 3600 * 24))
-          root.dateOffsetDays = diffDays
-          root.refresh()
-        }
-        break
+    } else if (String(raw || "").trim() !== "") {
+      try {
+        var parsed = JSON.parse(String(raw))
+        if (parsed && parsed.version === 1) record = parsed
+      } catch (e) {
+        // Corrupt state is treated as unconfigured; no private values are logged.
       }
     }
-  }
 
-  function saveLocation(label, lat, lon, tzName, elev) {
-    root.locationLabel = label || ""
-    root.latitude = lat !== null && lat !== undefined ? parseFloat(lat) : null
-    root.longitude = lon !== null && lon !== undefined ? parseFloat(lon) : null
-    root.timeZone = tzName || ""
-    root.elevationM = elev ? parseFloat(elev) : 0.0
-    root.locationConfigured = (root.latitude !== null && root.longitude !== null)
+    if (root.validLocationRecord(record)) root.applyLocation(record)
+    else root.applyLocation({ locationConfigured: false })
 
-    // Save to state file asynchronously
-    saveSettingsState()
+    root.settingsLoaded = true
     root.refresh()
   }
 
-  function clearLocation() {
-    root.locationLabel = ""
-    root.latitude = null
-    root.longitude = null
-    root.timeZone = ""
-    root.elevationM = 0.0
-    root.locationConfigured = false
-
-    saveSettingsState()
-    root.refresh()
-  }
-
-  function saveSettingsState() {
-    var stateData = {
+  function requestOptions(locationOverride) {
+    var location = locationOverride || {
       locationConfigured: root.locationConfigured,
       locationLabel: root.locationLabel,
       latitude: root.latitude,
@@ -168,32 +147,147 @@ Item {
       timeZone: root.timeZone,
       elevationM: root.elevationM
     }
-    var jsonStr = JSON.stringify(stateData, null, 2)
-    var cmd = [
-      "python3",
-      "-c",
-      "import os, sys, pathlib; p = pathlib.Path(sys.argv[1]); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(sys.argv[2], encoding='utf-8')",
-      root.settingsStatePath,
-      jsonStr
-    ]
-    saveProc.command = cmd
-    saveProc.running = true
+    var options = {
+      mode: root.selectionMode,
+      timeZone: location.timeZone || undefined,
+      latitude: location.locationConfigured ? location.latitude : null,
+      longitude: location.locationConfigured ? location.longitude : null,
+      elevationM: location.locationConfigured ? location.elevationM : 0.0,
+      locationLabel: location.locationConfigured ? location.locationLabel : ""
+    }
+
+    if (root.selectionMode === "browse") options.selectedDate = root.selectedLocalDate
+    else if (root.selectionMode === "event") {
+      options.selectedDate = root.selectedLocalDate
+      options.instantUtc = root.selectedInstantUtc
+    }
+    return options
+  }
+
+  function refresh() {
+    if (!root.settingsLoaded) return
+    client.requestSnapshot(root.requestOptions(null))
+  }
+
+  function isoDatePlusDays(isoDate, delta) {
+    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoDate || ""))
+    if (!match) return Qt.formatDate(new Date(), "yyyy-MM-dd")
+    var date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+    date.setUTCDate(date.getUTCDate() + delta)
+    return date.getUTCFullYear() + "-" + String(date.getUTCMonth() + 1).padStart(2, "0")
+      + "-" + String(date.getUTCDate()).padStart(2, "0")
+  }
+
+  function stepDate(delta) {
+    var baseDate = root.selectedLocalDate || (root.observation ? root.observation.selectedLocalDate : "")
+    root.selectedLocalDate = root.isoDatePlusDays(baseDate, delta)
+    root.selectedInstantUtc = ""
+    root.selectionMode = "browse"
+    root.refresh()
+  }
+
+  function jumpToToday() {
+    root.selectionMode = "now"
+    root.selectedLocalDate = ""
+    root.selectedInstantUtc = ""
+    root.refresh()
+  }
+
+  function jumpToPhase(quarterNum) {
+    for (var i = 0; i < root.nextMajorPhases.length; i++) {
+      var event = root.nextMajorPhases[i]
+      if (event.quarter !== quarterNum || !event.instantUtc || !event.localDateTime) continue
+      root.selectionMode = "event"
+      root.selectedLocalDate = String(event.localDateTime).split("T")[0]
+      root.selectedInstantUtc = String(event.instantUtc)
+      root.refresh()
+      return
+    }
+  }
+
+  function validateAndSaveLocation(label, lat, lon, tzName, elev) {
+    var candidate = {
+      locationConfigured: true,
+      locationLabel: String(label || "").trim().substring(0, 128),
+      latitude: Number(lat),
+      longitude: Number(lon),
+      timeZone: String(tzName || "").trim(),
+      elevationM: Number(elev || 0)
+    }
+    if (!root.validLocationRecord(candidate)) {
+      root.locationSaveFinished(false, "Enter valid coordinates, elevation, and an IANA time zone.")
+      return
+    }
+    if (candidate.locationLabel === "")
+      candidate.locationLabel = candidate.latitude.toFixed(2) + ", " + candidate.longitude.toFixed(2)
+
+    root.pendingLocation = candidate
+    client.requestSnapshot(root.requestOptions(candidate))
+  }
+
+  function clearLocation() {
+    root.pendingLocation = null
+    root.applyLocation({ locationConfigured: false })
+    root.saveSettingsState()
+    root.refresh()
+  }
+
+  function saveSettingsState() {
+    if (!root.settingsLoaded || root.settingsStatePath === "") return
+    var stateData = {
+      version: 1,
+      locationConfigured: root.locationConfigured,
+      locationLabel: root.locationLabel,
+      latitude: root.latitude,
+      longitude: root.longitude,
+      timeZone: root.timeZone,
+      elevationM: root.elevationM
+    }
+    settingsFile.setText(JSON.stringify(stateData, null, 2) + "\n")
+    permissionsTimer.restart()
+  }
+
+  FileView {
+    id: settingsFile
+    path: root.settingsStatePath
+    atomicWrites: true
+    watchChanges: false
+    printErrors: false
+    onLoaded: root.hydrateSettings(text())
+    onLoadFailed: root.hydrateSettings("")
   }
 
   Process {
-    id: saveProc
+    id: ensureStateDir
+    command: ["install", "-d", "-m", "700", root.settingsStateDir]
+    onExited: settingsFile.reload()
+  }
+
+  Timer {
+    id: permissionsTimer
+    interval: 120
+    repeat: false
+    onTriggered: {
+      statePermissions.command = ["chmod", "600", root.settingsStatePath]
+      statePermissions.running = true
+    }
+  }
+
+  Process {
+    id: statePermissions
     command: []
   }
 
-  // Periodic refresh timer (15 minutes by default)
   Timer {
-    interval: Math.max(5, (root.settings && root.settings.refreshMinutes ? root.settings.refreshMinutes : 15)) * 60 * 1000
-    running: true
+    interval: Math.max(5, (root.settings && root.settings.refreshMinutes
+      ? root.settings.refreshMinutes : 15)) * 60 * 1000
+    running: root.settingsLoaded
     repeat: true
-    onTriggered: {
-      if (root.isToday) {
-        root.refresh()
-      }
-    }
+    onTriggered: if (root.isToday) root.refresh()
+  }
+
+  Component.onCompleted: {
+    if (root.settingsStateDir !== "") ensureStateDir.running = true
+    else root.hydrateSettings("")
   }
 }

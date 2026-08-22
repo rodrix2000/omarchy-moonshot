@@ -1,44 +1,50 @@
 # Moonshot Implementation Status
 
-## Target Platform Snapshot
+## Audited Platform Snapshot
 
-- **OS / Distro:** Arch Linux / Omarchy 4.0.0.alpha (omarchy 4.0.0-1)
-- **Omarchy Path:** `/usr/share/omarchy`
-- **Quickshell:** `Quickshell 0.3.0 (revision 28771c7c74b42e20afca0b1b63980cb46515537c, distributed by AUR (package: quickshell-git))`
-- **Python:** `Python 3.14.7`
+- **OS / distro:** Arch Linux with Omarchy package `4.0.0-1`
+- **Installed Omarchy path:** `/usr/share/omarchy`
+- **Omarchy source revision:** unavailable because the installed path is a package payload, not a Git checkout
+- **Quickshell:** `0.3.0`, revision `28771c7c74b42e20afca0b1b63980cb46515537c`
+- **Python:** `3.14.7`
 - **Plugin ID:** `io.github.rodrix2000.moonshot`
-- **Entry Points:** `kinds: ["bar-widget"]`, `entryPoints: { "barWidget": "BarWidget.qml" }`
+- **Entry point:** one `bar-widget`, `BarWidget.qml`, with a nested `KeyboardPanel`
+- **Native shell check:** Loaded in the installed `omarchy-shell` on the 1440×900, 1.25-scale `eDP-1` output; IPC open, anchored placement, full-height sizing, no-scroll layout, and shell-log health were verified on 2026-08-22
 
 ## Milestone Progress
 
-| Milestone | Description | Status | Target / Notes |
-|---|---|---|---|
-| Milestone 0 | Platform Verification | Verified | Platform version, tools, and constraints verified on system |
-| Milestone 1 | Repository Foundation | Verified | Manifest, docs, Makefile, licenses, CI, package checks |
-| Milestone 2 | Astronomy Core | Verified | Python helper, vendored engine, 16 unit & golden tests |
-| Milestone 3 | Minimal Shell Integration | Verified | BarWidget, Panel, KeyboardPanel lifecycle, popout handoff |
-| Milestone 4 | Protocol Integration | Verified | AstronomyClient, request generations, last-good caching |
-| Milestone 5 | Moon Rendering & Primary Panel | Verified | Canvas MoonDisk, hero metrics, north-up chart convention |
-| Milestone 6 | Date Browsing | Verified | Day navigation, today jump, exact phase quarter jumps |
-| Milestone 7 | Location & Timezone | Verified | Manual coordinates, IANA zones, city search, weather import |
-| Milestone 8 | Accessibility & Resilience | Verified | Keyboard shortcuts, visible focus, reduced motion, fault recovery |
-| Milestone 9 | Release Quality | Verified | All gates green, DoD verified, 1280x800 preview generated |
+| Milestone | Status | Evidence and remaining work |
+|---|---|---|
+| Platform and repository | Automated verified | Installed package/tool versions, manifest validation, package hygiene, licensing, and failing format/safety gates |
+| Astronomy core | Automated verified | Pinned Astronomy Engine and 22 unit/golden/protocol tests |
+| Shell integration | Native load/placement verified | QML lint plus Quickshell render/model smoke and an installed-shell IPC open on the audited top-bar output; pointer handoff and other bar orientations remain manual |
+| Protocol and resilience | Automated verified | One-active/newest-pending scheduling, three-second timeout, 64 KiB ceilings, schema checks, redacted failures, and last-good state |
+| Rendering and primary panel | Visual/native verified | Native-size 1280×800 preview plus installed-shell capture inspected; generated RGBA texture, computed north-up terminator, and a full-height panel without unnecessary scrolling |
+| Date and event browsing | Automated verified | Calendar-safe day stepping and exact event-instant regression test |
+| Location and time zones | Core verified | Helper validation, DST/fractional-zone tests, atomic XDG state, bounded search source review; interactive provider search remains manual |
+| Accessibility and themes | Partially verified | Semantic tokens, vector controls, tab focus, accessible names, reduced-motion path, static gate, and current-theme native render; screen reader and live theme matrix remain manual |
+| Release quality | Candidate gates green | Automated gates and the audited-output native smoke pass are green; multi-monitor, full live-theme matrix, and assistive-technology checks remain before marketplace sign-off |
 
 ## Traceability Matrix
 
-| Requirement | Description | State | Code | Tests | Evidence / Notes |
-|---|---|---|---|---|---|
-| FR-001 | Persistent bar lunar indicator | Verified | `BarWidget.qml`, `MoonDisk.qml` | `scripts/qml-check.sh` | 5 bar display modes supported |
-| FR-002 | Lunar panel popup on activation | Verified | `Panel.qml`, `BarWidget.qml` | `tests/qml/LifecycleSmoke.qml` | Popout coordination & focus trap avoidance |
-| FR-003 | Offline ephemeris computation | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_ephemeris.py` | Vendored Astronomy Engine v2.1.19 |
-| FR-004 | Exact phase classification & illumination | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_classification.py` | 8 named octants + exact quarter instants |
-| FR-005 | Moon age calculation | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_ephemeris.py` | Measured from exact preceding new moon |
-| FR-006 | Next major phase events | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_ephemeris.py` | Quarter search with local timestamps |
-| FR-007 | Observer rise/set & horizon | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_rise_set.py` | Upper limb refraction convention tested |
-| FR-008 | Date browsing & jump to today/phase | Verified | `MoonshotModel.qml`, `Panel.qml` | `tests/qml/LifecycleSmoke.qml` | 21:00 local anchor for browse dates |
-| FR-009 | Location configuration (manual & search) | Verified | `LocationEditor.qml` | `tests/test_protocol.py` | Manual coords, IANA zones, Open-Meteo search |
-| FR-010 | Native Omarchy theming & responsive UI | Verified | `MoonDisk.qml`, `Panel.qml` | `tests/qml/RenderSmoke.qml` | Canvas procedural rendering |
-| FR-011 | Full keyboard navigation & accessibility | Verified | `Panel.qml`, `KeyboardPanel` | `tests/qml/LifecycleSmoke.qml` | Shortcuts (T, F, N, L, R, Esc), visible focus |
-| NFR-001 | Strict privacy (no telemetry/tracking) | Verified | Repository-wide | `scripts/safety-check.sh` | Verified offline ephemeris, zero tracking |
-| NFR-002 | Memory and CPU performance budgets | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_performance.py` | Sub-150ms helper execution (<50ms measured) |
-| NFR-003 | Bounded process & request generation | Verified | `AstronomyClient.qml` | `tests/test_protocol.py` | Monotonic request IDs |
+| Requirement | State | Code | Automated evidence | Notes |
+|---|---|---|---|---|
+| Persistent bar lunar indicator | Implemented | `BarWidget.qml`, `MoonDisk.qml` | QML lint/runtime render | Five configured display modes; right-click cycle is session-local |
+| Lunar popup | Implemented | `Panel.qml`, `MoonshotContent.qml` | Quickshell render/lifecycle smoke plus installed-shell capture | Native open, placement, and no-scroll sizing confirmed on the audited top-bar output |
+| Offline ephemeris | Verified | `scripts/moonshot_ephemeris.py` | Astronomy and protocol tests | Vendored Astronomy Engine `2.1.19` |
+| Phase, illumination, age, quarters | Verified | Helper and `MoonDisk.qml` | Golden/classification/ephemeris tests | Surface texture is illustrative; phase geometry is computed |
+| Observer rise/set and horizon | Verified | Helper | Rise/set and timezone tests | Apparent altitude and upper-limb/refraction conventions documented |
+| Date browsing and exact phase jumps | Verified | `MoonshotModel.qml`, helper | Exact-event and lifecycle tests | Browse dates anchor at 21:00 local; events retain exact UTC instant |
+| Location configuration | Implemented | `LocationEditor.qml`, `MoonshotModel.qml` | Bounds/redaction/protocol tests | Manual mode is offline; city search is explicit Open-Meteo HTTPS |
+| Theme-responsive UI | Source/current-theme verified | Production QML, `qs.Commons` tokens | QML lint/runtime preview plus installed-shell capture | Live light/dark/tinted/high-contrast switching remains manual |
+| Keyboard and accessibility | Partially verified | Panel, editor, custom controls | Static accessibility gate | Screen reader output and complete native tab order remain manual |
+| Privacy and bounded execution | Verified | Client, helper, editor, state model | Safety/protocol/package/runtime gates | No telemetry; raw stderr is not exposed; state is atomic and user-only |
+| Performance | Verified on audited machine | Helper | `tests/test_performance.py` | Test enforces the documented helper budget |
+
+## Manual Release Checks Still Required
+
+1. Verify pointer open/close and sibling-popout switching from the real bar, including bottom/left/right bar orientations.
+2. Switch among representative light, dark, tinted, and high-contrast Omarchy themes while the panel is open.
+3. Verify placement, clipping, scroll behavior, and keyboard focus on additional short and multi-monitor layouts.
+4. Exercise location search against the live provider and verify timeout/offline fallback messaging.
+5. Inspect accessible names and navigation with the target screen reader, plus reduced-motion behavior.

@@ -75,6 +75,48 @@ class TestEphemeris(unittest.TestCase):
         self.assertEqual(snap["data"]["events"]["set"]["status"], "not-configured")
         self.assertGreater(snap["data"]["moon"]["illuminationPercent"], 0.0)
 
+    def test_event_mode_preserves_exact_instant_and_event_local_date(self):
+        snap = compute_snapshot(
+            request_id="test-event",
+            instant_utc="2026-08-28T04:00:00Z",
+            selected_date="2099-01-01",
+            timezone_name="America/Chicago",
+            latitude=None,
+            longitude=None,
+            observation_mode="event",
+        )
+
+        observation = snap["data"]["observation"]
+        self.assertEqual(observation["mode"], "event")
+        self.assertEqual(observation["instantUtc"], "2026-08-28T04:00:00Z")
+        self.assertEqual(observation["selectedLocalDate"], "2026-08-27")
+        self.assertTrue(observation["localDateTime"].startswith("2026-08-27T23:00:00"))
+
+    def test_partial_coordinates_are_rejected(self):
+        snap = compute_snapshot(
+            request_id="test-partial",
+            instant_utc="2026-08-22T19:30:00Z",
+            selected_date=None,
+            timezone_name="UTC",
+            latitude=33.0,
+            longitude=None,
+        )
+        self.assertEqual(snap["status"], "error")
+        self.assertEqual(snap["error"]["code"], "INVALID_COORDINATES")
+
+    def test_out_of_range_elevation_is_rejected(self):
+        snap = compute_snapshot(
+            request_id="test-elevation",
+            instant_utc="2026-08-22T19:30:00Z",
+            selected_date=None,
+            timezone_name="UTC",
+            latitude=33.0,
+            longitude=-96.0,
+            elevation_m=10000.0,
+        )
+        self.assertEqual(snap["status"], "error")
+        self.assertEqual(snap["error"]["code"], "INVALID_ELEVATION")
+
 
 if __name__ == "__main__":
     unittest.main()

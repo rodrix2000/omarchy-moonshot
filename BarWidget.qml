@@ -1,8 +1,8 @@
 import QtQuick
 import qs.Commons
-import qs.Ui
+import qs.Ui as Ui
 
-BarWidget {
+Ui.BarWidget {
   id: root
   moduleName: "io.github.rodrix2000.moonshot"
 
@@ -15,8 +15,12 @@ BarWidget {
     if ("hostWidget" in target) target.hostWidget = root
   }
 
-  function refresh() {
+  function refreshLocal() {
     if (panelLoader.item && panelLoader.item.refresh) panelLoader.item.refresh()
+  }
+
+  function refresh() {
+    root.broadcast("refreshLocal")
   }
 
   function togglePanel() {
@@ -40,10 +44,43 @@ BarWidget {
   }
 
   readonly property var moonModel: panelLoader.item ? panelLoader.item.model : null
-  readonly property string displayMode: root.setting("displayMode", "disk")
+  property string transientDisplayMode: ""
+  readonly property string displayMode: transientDisplayMode !== ""
+    ? transientDisplayMode : root.setting("displayMode", "disk")
+
+  function cycleDisplayMode() {
+    var modes = ["disk", "illumination", "phase", "next-full", "moonrise"]
+    var index = modes.indexOf(root.displayMode)
+    root.transientDisplayMode = modes[(index + 1 + modes.length) % modes.length]
+  }
+
+  function localeTime(isoValue) {
+    var match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(String(isoValue || ""))
+    var date = match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]),
+      Number(match[4]), Number(match[5]), Number(match[6] || 0)) : null
+    if (!date || isNaN(date.getTime())) return ""
+    var preference = root.setting("timeFormat", "locale")
+    var pattern = preference === "24h" ? "HH:mm"
+      : (preference === "12h" ? "h:mm AP" : Qt.locale().timeFormat(Locale.ShortFormat))
+    return Qt.formatTime(date, pattern)
+  }
+
+  function daysUntil(isoValue) {
+    var date = new Date(String(isoValue || ""))
+    if (isNaN(date.getTime())) return "soon"
+    var days = Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86400000))
+    return days === 0 ? "today" : ("in " + days + "d")
+  }
+
+  function nextFullMoon() {
+    if (!moonModel || !moonModel.nextMajorPhases) return null
+    for (var i = 0; i < moonModel.nextMajorPhases.length; i++)
+      if (moonModel.nextMajorPhases[i].quarter === 2) return moonModel.nextMajorPhases[i]
+    return null
+  }
 
   readonly property string barText: {
-    if (!moonModel) return ""
+    if (!moonModel || root.vertical) return ""
     if (root.displayMode === "illumination") {
       return Math.round(moonModel.illuminationPercent) + "%"
     }
@@ -51,11 +88,12 @@ BarWidget {
       return moonModel.phaseName
     }
     if (root.displayMode === "next-full") {
-      return "Full soon"
+      var full = root.nextFullMoon()
+      return full ? ("Full " + root.daysUntil(full.instantUtc)) : "Full soon"
     }
     if (root.displayMode === "moonrise") {
       if (moonModel.riseEvent && moonModel.riseEvent.localDateTime) {
-        return moonModel.riseEvent.localDateTime.split("T")[1].substring(0, 5)
+        return root.localeTime(moonModel.riseEvent.localDateTime)
       }
     }
     return ""
@@ -63,7 +101,8 @@ BarWidget {
 
   readonly property string barTooltip: {
     if (!moonModel) return "Moonshot"
-    return moonModel.phaseName + " (" + Math.round(moonModel.illuminationPercent) + "% illuminated)"
+    return moonModel.phaseName + " · " + Math.round(moonModel.illuminationPercent)
+      + "% illuminated" + (moonModel.locationConfigured ? " · " + moonModel.locationLabel : " · no location")
   }
 
   visible: true
@@ -84,7 +123,7 @@ BarWidget {
     }
   }
 
-  WidgetButton {
+  Ui.WidgetButton {
     id: button
     anchors.fill: parent
     bar: root.bar
@@ -98,6 +137,8 @@ BarWidget {
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.MiddleButton) {
         root.refresh()
+      } else if (buttonCode === Qt.RightButton) {
+        root.cycleDisplayMode()
       } else {
         root.togglePanel()
       }
@@ -110,13 +151,15 @@ BarWidget {
 
       MoonDisk {
         anchors.verticalCenter: parent.verticalCenter
-        size: Style.space(16)
+        size: Style.space(17)
         phaseAngleDeg: root.moonModel ? root.moonModel.phaseAngleDeg : 0.0
         illumination: root.moonModel ? root.moonModel.illuminationFraction : 0.0
         direction: root.moonModel ? root.moonModel.direction : "waxing"
         hero: false
         renderMode: root.setting("renderMode", "realistic")
         reducedMotion: root.setting("reducedMotion", false)
+        surfaceColor: Color.bar.background
+        accessibleDescription: root.barTooltip
       }
 
       Text {
