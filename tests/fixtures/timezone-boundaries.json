@@ -1,0 +1,26 @@
+{
+  "source": "IANA Time Zone Database & DST Transitions",
+  "retrievedAt": "2026-08-22",
+  "cases": [
+    {
+      "timeZone": "America/Chicago",
+      "springForwardDate": "2026-03-08",
+      "fallBackDate": "2026-11-01"
+    },
+    {
+      "timeZone": "Asia/Kolkata",
+      "standardOffsetSeconds": 19800,
+      "isDst": false
+    },
+    {
+      "timeZone": "Pacific/Chatham",
+      "standardOffsetSeconds": 45900,
+      "isDst": false
+    },
+    {
+      "timeZone": "America/Phoenix",
+      "standardOffsetSeconds": -25200,
+      "isDst": false
+    }
+  ]
+}

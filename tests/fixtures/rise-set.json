@@ -1,0 +1,40 @@
+{
+  "source": "USNO / Astronomy Engine Moon Rise/Set Reference Data",
+  "retrievedAt": "2026-08-22",
+  "toleranceMinutes": 5,
+  "cases": [
+    {
+      "location": "North Texas (Celina)",
+      "latitude": 33.32,
+      "longitude": -96.78,
+      "timeZone": "America/Chicago",
+      "date": "2026-08-22",
+      "expectedRiseStatus": "event",
+      "expectedRiseLocal": "16:44",
+      "expectedSetStatus": "event",
+      "expectedSetLocal": "01:29"
+    },
+    {
+      "location": "Greenwich (London)",
+      "latitude": 51.48,
+      "longitude": 0.0,
+      "timeZone": "Europe/London",
+      "date": "2026-08-22",
+      "expectedRiseStatus": "event",
+      "expectedRiseLocal": "17:35",
+      "expectedSetStatus": "none-in-day",
+      "expectedSetLocal": null
+    },
+    {
+      "location": "Sydney (Australia)",
+      "latitude": -33.87,
+      "longitude": 151.21,
+      "timeZone": "Australia/Sydney",
+      "date": "2026-08-22",
+      "expectedRiseStatus": "event",
+      "expectedRiseLocal": "11:47",
+      "expectedSetStatus": "event",
+      "expectedSetLocal": "02:13"
+    }
+  ]
+}
