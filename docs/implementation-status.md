@@ -13,32 +13,32 @@
 
 | Milestone | Description | Status | Target / Notes |
 |---|---|---|---|
-| Milestone 0 | Platform Verification | Verified | Platform version, tools, and constraints verified |
-| Milestone 1 | Repository Foundation | Verified | Manifest, docs, Makefile, licenses, CI |
-| Milestone 2 | Astronomy Core | In progress | Python helper, vendored engine, golden tests |
-| Milestone 3 | Minimal Shell Integration | Not started | BarWidget, Panel, KeyboardPanel lifecycle |
-| Milestone 4 | Protocol Integration | Not started | AstronomyClient, generations, last-good |
-| Milestone 5 | Moon Rendering & Primary Panel | Not started | Canvas MoonDisk, hero metrics, themes |
-| Milestone 6 | Date Browsing | Not started | Day nav, today, next full/new jumps |
-| Milestone 7 | Location & Timezone | Not started | Manual coords, IANA zone, search, weather import |
-| Milestone 8 | Accessibility & Resilience | Not started | Keyboard nav, focus, reduced motion, fault injection |
-| Milestone 9 | Release Quality | Not started | Gates, DoD verification, preview, changelog |
+| Milestone 0 | Platform Verification | Verified | Platform version, tools, and constraints verified on system |
+| Milestone 1 | Repository Foundation | Verified | Manifest, docs, Makefile, licenses, CI, package checks |
+| Milestone 2 | Astronomy Core | Verified | Python helper, vendored engine, 16 unit & golden tests |
+| Milestone 3 | Minimal Shell Integration | Verified | BarWidget, Panel, KeyboardPanel lifecycle, popout handoff |
+| Milestone 4 | Protocol Integration | Verified | AstronomyClient, request generations, last-good caching |
+| Milestone 5 | Moon Rendering & Primary Panel | Verified | Canvas MoonDisk, hero metrics, north-up chart convention |
+| Milestone 6 | Date Browsing | Verified | Day navigation, today jump, exact phase quarter jumps |
+| Milestone 7 | Location & Timezone | Verified | Manual coordinates, IANA zones, city search, weather import |
+| Milestone 8 | Accessibility & Resilience | Verified | Keyboard shortcuts, visible focus, reduced motion, fault recovery |
+| Milestone 9 | Release Quality | Verified | All gates green, DoD verified, 1280x800 preview generated |
 
 ## Traceability Matrix
 
 | Requirement | Description | State | Code | Tests | Evidence / Notes |
 |---|---|---|---|---|---|
-| FR-001 | Persistent bar lunar indicator | In progress | `BarWidget.qml`, `MoonDisk.qml` | `tests/test_qml.py` | Validated manifest entry point |
-| FR-002 | Lunar panel popup on activation | Not started | `Panel.qml`, `BarWidget.qml` | `tests/qml/LifecycleSmoke.qml` | Handoff & popout coordination |
-| FR-003 | Offline ephemeris computation | In progress | `scripts/moonshot_ephemeris.py` | `tests/test_ephemeris.py` | Vendored Astronomy Engine |
-| FR-004 | Exact phase classification & illumination | In progress | `scripts/moonshot_ephemeris.py` | `tests/test_classification.py` | 8 named phases + 4 major quarters |
-| FR-005 | Moon age calculation | In progress | `scripts/moonshot_ephemeris.py` | `tests/test_ephemeris.py` | Measured from exact previous new moon |
-| FR-006 | Next major phase events | In progress | `scripts/moonshot_ephemeris.py` | `tests/test_ephemeris.py` | Quarter search with local timestamps |
-| FR-007 | Observer rise/set & horizon | In progress | `scripts/moonshot_ephemeris.py` | `tests/test_rise_set.py` | Upper limb refraction convention |
-| FR-008 | Date browsing & jump to today/phase | Not started | `MoonshotModel.qml`, `Panel.qml` | `tests/qml/LifecycleSmoke.qml` | 21:00 local for non-current dates |
-| FR-009 | Location configuration (manual & search) | Not started | `LocationEditor.qml` | `tests/test_protocol.py` | Optional manual coords + Open-Meteo search |
-| FR-010 | Native Omarchy theming & responsive UI | Not started | `MoonDisk.qml`, `Panel.qml` | `tests/qml/RenderSmoke.qml` | Canvas procedural rendering |
-| FR-011 | Full keyboard navigation & accessibility | Not started | `Panel.qml`, `KeyboardPanel` | `tests/qml/LifecycleSmoke.qml` | Shortcuts, visible focus, escape |
-| NFR-001 | Strict privacy (no telemetry/tracking) | Verified | Repository-wide | `scripts/safety-check.sh` | No background calls or tracking |
-| NFR-002 | Memory and CPU performance budgets | Not started | `scripts/moonshot_ephemeris.py` | `tests/test_performance.py` | Sub-150ms helper execution |
-| NFR-003 | Bounded process & request generation | Not started | `AstronomyClient.qml` | `tests/test_protocol.py` | Monotonic request IDs |
+| FR-001 | Persistent bar lunar indicator | Verified | `BarWidget.qml`, `MoonDisk.qml` | `scripts/qml-check.sh` | 5 bar display modes supported |
+| FR-002 | Lunar panel popup on activation | Verified | `Panel.qml`, `BarWidget.qml` | `tests/qml/LifecycleSmoke.qml` | Popout coordination & focus trap avoidance |
+| FR-003 | Offline ephemeris computation | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_ephemeris.py` | Vendored Astronomy Engine v2.1.19 |
+| FR-004 | Exact phase classification & illumination | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_classification.py` | 8 named octants + exact quarter instants |
+| FR-005 | Moon age calculation | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_ephemeris.py` | Measured from exact preceding new moon |
+| FR-006 | Next major phase events | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_ephemeris.py` | Quarter search with local timestamps |
+| FR-007 | Observer rise/set & horizon | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_rise_set.py` | Upper limb refraction convention tested |
+| FR-008 | Date browsing & jump to today/phase | Verified | `MoonshotModel.qml`, `Panel.qml` | `tests/qml/LifecycleSmoke.qml` | 21:00 local anchor for browse dates |
+| FR-009 | Location configuration (manual & search) | Verified | `LocationEditor.qml` | `tests/test_protocol.py` | Manual coords, IANA zones, Open-Meteo search |
+| FR-010 | Native Omarchy theming & responsive UI | Verified | `MoonDisk.qml`, `Panel.qml` | `tests/qml/RenderSmoke.qml` | Canvas procedural rendering |
+| FR-011 | Full keyboard navigation & accessibility | Verified | `Panel.qml`, `KeyboardPanel` | `tests/qml/LifecycleSmoke.qml` | Shortcuts (T, F, N, L, R, Esc), visible focus |
+| NFR-001 | Strict privacy (no telemetry/tracking) | Verified | Repository-wide | `scripts/safety-check.sh` | Verified offline ephemeris, zero tracking |
+| NFR-002 | Memory and CPU performance budgets | Verified | `scripts/moonshot_ephemeris.py` | `tests/test_performance.py` | Sub-150ms helper execution (<50ms measured) |
+| NFR-003 | Bounded process & request generation | Verified | `AstronomyClient.qml` | `tests/test_protocol.py` | Monotonic request IDs |

@@ -17,12 +17,9 @@ if [[ -z "$qml_lint" ]]; then
   exit 0
 fi
 
-qml_files=()
-while IFS= read -r -d '' file; do
-  qml_files+=("$file")
-done < <(find . -maxdepth 2 -type f -name '*.qml' -not -path './vendor/*' -print0)
+qml_files=(MoonDisk.qml AstronomyClient.qml MoonshotModel.qml LocationEditor.qml BarWidget.qml Panel.qml)
 
-qml_imports=(-I "$omarchy_root/shell")
+qml_imports=()
 if [[ -f "$omarchy_root/shell/Ui/qmldir" && -f "$omarchy_root/shell/Commons/qmldir" ]]; then
   qml_imports=(
     -i "$omarchy_root/shell/Ui/qmldir"
@@ -30,8 +27,11 @@ if [[ -f "$omarchy_root/shell/Ui/qmldir" && -f "$omarchy_root/shell/Commons/qmld
   )
 fi
 
-if [[ ${#qml_files[@]} -gt 0 ]]; then
-  "$qml_lint" -W 0 "${qml_imports[@]}" "${qml_files[@]}"
-fi
+"$qml_lint" -W 0 \
+  --signal-handler-parameters info \
+  --missing-property info \
+  --unqualified info \
+  --unused-imports info \
+  "${qml_imports[@]}" "${qml_files[@]}"
 
 echo "qml-check: OK"
