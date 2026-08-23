@@ -33,7 +33,8 @@ Item {
       }
 
       if (root.phase === 0 && service.snapshot !== null) {
-        panel.setPanelSizeForTesting(480, 790)
+        panel.setPanelSizeForTesting(480, 660)
+        panel.setWindowStateForTesting(true, false)
         panel.open("{}")
         root.phase = 1
         return
@@ -41,6 +42,12 @@ Item {
 
       if (root.phase === 1 && panel.opened && panel.mainViewportHeight > 0
           && panel.mainContentHeight > 0) {
+        if (panel.windowFullscreen || panel.windowMaximized) {
+          console.error("PanelSmoke: panel did not normalize its window state",
+            panel.windowFullscreen, panel.windowMaximized)
+          Qt.exit(5)
+          return
+        }
         if (panel.mainContentHeight > panel.mainViewportHeight) {
           console.error("PanelSmoke: default panel still requires scrolling",
             panel.mainContentHeight, panel.mainViewportHeight)
@@ -53,7 +60,7 @@ Item {
           Qt.exit(3)
           return
         }
-        console.log("PanelSmoke: floating window lifecycle and no-scroll default OK")
+        console.log("PanelSmoke: normal-state lifecycle, state reset, and no-scroll default OK")
         Qt.quit()
       }
     }

@@ -11,7 +11,7 @@
 
 ## Interaction and Accessibility
 
-- The native floating window defaults to 480 × 790 logical pixels so the primary lunar view fits without scrolling. It remains resizable and becomes vertically scrollable when manually reduced or when the location editor needs more room.
+- The native window defaults to 480 × 660 logical pixels so it tiles comfortably within the laptop work area while the primary lunar view still fits without scrolling. It remains resizable and becomes vertically scrollable when manually reduced or when the location editor needs more room.
 - All custom commands participate in tab focus, expose accessible names/roles, and use visible Omarchy focus and hover tokens.
 - Arrow keys and Vim-style lowercase `h`/`l` browse dates; `T`, `F`, `N`, `Shift+L`, and `R` provide direct actions; `Escape` backs out of location editing before closing the window, and Omarchy’s standard `Super+W` command closes the native window directly.
 - Location values are validated through the astronomy helper before they are committed. Search disclosure, loading, timeout, empty, invalid, and offline-manual states are explicit.

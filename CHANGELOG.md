@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-08-23
+
+### Fixed
+- Reset stale fullscreen and maximized state whenever Moonshot opens or closes so it tiles beside the active workspace window like PhotoDock and Omarchy Chess.
+- Prevent a previous fullscreen session from hiding the existing workspace client on the next launch.
+- Fit the default 480 × 660 window request within the laptop work area while keeping the complete primary view visible without scrolling.
+
 ## [0.1.1] - 2026-08-23
 
 ### Changed

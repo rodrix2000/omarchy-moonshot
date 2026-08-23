@@ -15,7 +15,7 @@ Item {
   property var service: null
   property bool closingFromHost: false
   property bool editingLocation: false
-  property size preferredWindowSize: Qt.size(480, 790)
+  property size preferredWindowSize: Qt.size(480, 660)
 
   readonly property string pluginId: manifest && manifest.id
     ? String(manifest.id) : "io.github.rodrix2000.moonshot"
@@ -24,14 +24,24 @@ Item {
   readonly property var settings: service && service.settings ? service.settings : ({})
   readonly property real mainViewportHeight: mainFlick.height
   readonly property real mainContentHeight: mainFlick.contentHeight
+  readonly property bool windowFullscreen: moonWindow.fullscreen
+  readonly property bool windowMaximized: moonWindow.maximized
+
+  function normalizeWindowState() {
+    moonWindow.fullscreen = false
+    moonWindow.maximized = false
+  }
 
   function open(_payloadJson) {
     root.closingFromHost = false
     root.editingLocation = false
+    root.normalizeWindowState()
     moonWindow.visible = true
     if (root.model && typeof root.model.refresh === "function") root.model.refresh()
     Qt.callLater(function() {
-      if (moonWindow.visible) keyCatcher.forceActiveFocus()
+      if (!moonWindow.visible) return
+      root.normalizeWindowState()
+      keyCatcher.forceActiveFocus()
     })
   }
 
@@ -40,6 +50,7 @@ Item {
     root.editingLocation = false
     keyCatcher.focus = false
     focusScope.focus = false
+    root.normalizeWindowState()
     moonWindow.visible = false
     root.closingFromHost = false
   }
@@ -67,11 +78,16 @@ Item {
     moonWindow.implicitHeight = height
   }
 
+  function setWindowStateForTesting(fullscreen, maximized) {
+    moonWindow.fullscreen = fullscreen
+    moonWindow.maximized = maximized
+  }
+
   FloatingWindow {
     id: moonWindow
     title: "Moonshot"
     implicitWidth: Math.max(440, root.preferredWindowSize.width)
-    implicitHeight: Math.max(700, root.preferredWindowSize.height)
+    implicitHeight: Math.max(620, root.preferredWindowSize.height)
     minimumSize: Qt.size(420, 620)
     visible: false
     color: Color.popups.background
