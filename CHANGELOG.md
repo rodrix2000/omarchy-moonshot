@@ -33,3 +33,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Bounded and normalized Open-Meteo responses, added a five-second search timeout, and stopped raw helper stderr from reaching the UI.
 - Added coordinate-pair, elevation, label, mode, and private-input redaction tests.
+- Kept privilege, service-management, and tracking policy regression checks out of shipped runtime paths so marketplace scanning reports actual capabilities instead of audit literals.
