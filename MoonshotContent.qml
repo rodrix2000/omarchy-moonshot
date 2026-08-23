@@ -16,6 +16,7 @@ Item {
   signal phaseRequested(int quarter)
   signal locationRequested()
   signal refreshRequested()
+  signal closeRequested()
 
   implicitWidth: Style.space(390)
   implicitHeight: contentColumn.implicitHeight
@@ -138,10 +139,22 @@ Item {
         }
       }
 
+      MoonshotButton {
+        id: closeButton
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        width: Style.spacing.controlHeight
+        height: Style.spacing.controlHeight
+        iconName: "close"
+        tooltipText: "Close Moonshot (Escape or Super+W)"
+        onClicked: root.closeRequested()
+      }
+
       Column {
         id: headerRight
         width: parent.width * 0.38
-        anchors.right: parent.right
+        anchors.right: closeButton.left
+        anchors.rightMargin: Style.spacing.controlGap
         spacing: Style.space(2)
 
         Text {

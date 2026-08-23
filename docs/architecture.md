@@ -8,9 +8,11 @@ Moonshot follows a strict separation of concerns between presentation and astron
 ┌────────────────────────────────────────────────────────┐
 │ Omarchy Bar & Shell (Quickshell / Qt6 QML)             │
 │                                                        │
-│   BarWidget.qml ──────> Bar Button (Status Slot)       │
+│   MoonshotService.qml ─> Shared MoonshotModel          │
 │         │                                              │
-│         ├─── Loader ──> Panel.qml (KeyboardPanel)      │
+│         ├── BarWidget.qml (Status Slot)                │
+│         │                                              │
+│         ├── Panel.qml (FloatingWindow)                 │
 │         │                 ├── MoonshotContent.qml      │
 │         │                 │   ├── MoonDisk + texture   │
 │         │                 │   ├── Observer metrics     │

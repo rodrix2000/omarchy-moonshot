@@ -41,7 +41,9 @@ assert not missing, f"manifest missing required fields: {missing}"
 assert manifest["schemaVersion"] == 1
 assert manifest["id"] == "io.github.rodrix2000.moonshot"
 assert manifest["license"] == "MIT"
-assert manifest["kinds"] == ["bar-widget"]
+assert manifest["kinds"] == ["service", "panel", "bar-widget"]
+assert manifest["entryPoints"].get("service") == "MoonshotService.qml"
+assert manifest["entryPoints"].get("panel") == "Panel.qml"
 assert manifest["entryPoints"].get("barWidget") == "BarWidget.qml"
 
 for entry in manifest["entryPoints"].values():

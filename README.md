@@ -9,7 +9,7 @@ Moonshot places a living lunar indicator in the Omarchy bar and opens a calm, lo
 ## Features
 
 - **Living Bar Indicator:** Optically centered lunar disk in the status bar with selectable modes (`disk`, `illumination`, `phase`, `next-full`, `moonrise`).
-- **Detailed Lunar Panel:** A realistic, texture-backed north-up lunar disk with a computed phase terminator, illumination stats, direction, and moon age.
+- **Detailed Lunar Window:** A native, resizable Omarchy window with a realistic, texture-backed north-up lunar disk, computed phase terminator, illumination stats, direction, and moon age.
 - **Accurate Astronomical Ephemeris:** Offline computation powered by Astronomy Engine with validated USNO/NASA golden data.
 - **Local Rise, Set & Horizon:** Precise local-day rise and set calculations with upper-limb and refraction corrections.
 - **Date Browsing:** Step through past or future dates with smooth transitions and quick jumps back to Today or the next Full/New Moon.
@@ -40,7 +40,7 @@ omarchy bar move io.github.rodrix2000.moonshot --section right
 
 ## Usage
 
-- **Click Bar Icon:** Toggle the Moonshot panel.
+- **Click Bar Icon:** Toggle the Moonshot window.
 - **Middle-Click Bar Icon:** Force recalculation and refresh.
 - **Right-Click Bar Icon:** Cycle the bar display mode for the current shell session.
 - **Keyboard Shortcuts (inside panel):**
@@ -50,7 +50,8 @@ omarchy bar move io.github.rodrix2000.moonshot --section right
   - <kbd>N</kbd>: Jump to next New Moon
   - <kbd>Shift</kbd>+<kbd>L</kbd>: Open Location Editor (`l` remains Vim-style Next day)
   - <kbd>R</kbd>: Refresh calculations
-  - <kbd>Escape</kbd>: Close Location Editor or dismiss Panel
+  - <kbd>Escape</kbd>: Close Location Editor or dismiss Moonshot
+  - <kbd>Super</kbd>+<kbd>W</kbd>: Close Moonshot using Omarchy’s standard window command
 
 ## Location & Privacy
 
@@ -65,7 +66,7 @@ omarchy bar move io.github.rodrix2000.moonshot --section right
 
 > **Note:** Moonshot v1 renders the lunar disk using a standard north-up astronomical chart convention (waxing light on right, waning on left). The phase silhouette is computed, while the neutral lunar albedo texture is illustrative rather than a scientific surface map. Local horizon disc rotation is not simulated.
 
-The panel uses Omarchy semantic surface, text, accent, muted, urgent, spacing, border, and focus tokens. The lunar texture stays neutral so it remains recognizable across light, dark, tinted, and high-contrast themes; theme color is limited to surrounding glow, rim, controls, and text.
+The window uses Omarchy semantic surface, text, accent, muted, urgent, spacing, border, and focus tokens. The lunar texture stays neutral so it remains recognizable across light, dark, tinted, and high-contrast themes; theme color is limited to surrounding glow, rim, controls, and text.
 
 ## Updating
 

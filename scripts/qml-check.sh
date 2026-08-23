@@ -25,6 +25,7 @@ qml_files=(
   AstronomyClient.qml
   MoonshotModel.qml
   LocationEditor.qml
+  MoonshotService.qml
   BarWidget.qml
   Panel.qml
 )

@@ -1,67 +1,52 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls as Controls
+import Quickshell
 import qs.Commons
 import qs.Ui as Ui
 
-Ui.Panel {
+Item {
   id: root
-  moduleName: "io.github.rodrix2000.moonshot"
-  ipcTarget: "io.github.rodrix2000.moonshot"
-  manageIpc: false
 
-  property var anchorItem: null
-  property var hostWidget: null
-  readonly property var barIdentity: hostWidget || root
-  property bool openedFromHotkey: false
+  property string omarchyPath: ""
+  property var shell: null
+  property var manifest: null
+  property var service: null
+  property bool closingFromHost: false
   property bool editingLocation: false
+  property size preferredWindowSize: Qt.size(480, 790)
 
-  MoonshotModel {
-    id: moonModel
-    settings: root.settings
-  }
+  readonly property string pluginId: manifest && manifest.id
+    ? String(manifest.id) : "io.github.rodrix2000.moonshot"
+  readonly property bool opened: moonWindow.visible
+  readonly property var model: service
+  readonly property var settings: service && service.settings ? service.settings : ({})
+  readonly property real mainViewportHeight: mainFlick.height
+  readonly property real mainContentHeight: mainFlick.contentHeight
 
-  readonly property alias model: moonModel
-
-  function open() {
-    root.openedFromHotkey = false
-    root.setCenterHoverRevealSuppressed(false)
-    root.controller.show()
-    moonModel.refresh()
-  }
-
-  function openFromHotkey() {
-    root.openedFromHotkey = true
-    root.controller.show()
-    moonModel.refresh()
+  function open(_payloadJson) {
+    root.closingFromHost = false
+    root.editingLocation = false
+    moonWindow.visible = true
+    if (root.model && typeof root.model.refresh === "function") root.model.refresh()
     Qt.callLater(function() {
-      if (root.opened) root.setCenterHoverRevealSuppressed(true)
+      if (moonWindow.visible) keyCatcher.forceActiveFocus()
     })
   }
 
   function close() {
-    root.setCenterHoverRevealSuppressed(false)
-    root.hideLocationEditor()
-    root.controller.hide()
+    root.closingFromHost = true
+    root.editingLocation = false
+    keyCatcher.focus = false
+    focusScope.focus = false
+    moonWindow.visible = false
+    root.closingFromHost = false
   }
 
-  function toggle() {
-    if (root.opened) root.close()
-    else root.open()
-  }
-
-  function refresh() {
-    moonModel.refresh()
-  }
-
-  function switchPanel(direction) {
-    if (root.bar && typeof root.bar.switchPanelFrom === "function")
-      return root.bar.switchPanelFrom(root.barIdentity, direction)
-    return false
-  }
-
-  function setCenterHoverRevealSuppressed(value) {
-    if (root.bar && "centerHoverRevealSuppressed" in root.bar)
-      root.bar.centerHoverRevealSuppressed = value
+  function requestClose() {
+    if (root.shell && typeof root.shell.hide === "function") root.shell.hide(root.pluginId)
+    else root.close()
   }
 
   function showLocationEditor() {
@@ -77,97 +62,125 @@ Ui.Panel {
     })
   }
 
-  Ui.KeyboardPanel {
-    id: popup
-    open: root.opened
-    anchorItem: root.anchorItem
-    bar: root.bar
-    owner: root.hostWidget || root
-    contentWidth: fittedContentWidth(Style.space(420), Style.space(440))
-    contentHeight: fittedContentHeight(
-      (root.editingLocation ? locationEditor.implicitHeight : moonContent.implicitHeight)
-        + Style.spacing.rowGap)
-    focusTarget: keyCatcher
+  function setPanelSizeForTesting(width, height) {
+    moonWindow.implicitWidth = width
+    moonWindow.implicitHeight = height
+  }
 
-    onOpenChanged: {
-      if (!open) root.editingLocation = false
-      else mainFlick.contentY = 0
+  FloatingWindow {
+    id: moonWindow
+    title: "Moonshot"
+    implicitWidth: Math.max(440, root.preferredWindowSize.width)
+    implicitHeight: Math.max(700, root.preferredWindowSize.height)
+    minimumSize: Qt.size(420, 620)
+    visible: false
+    color: Color.popups.background
+
+    onVisibleChanged: {
+      if (!visible && !root.closingFromHost) root.requestClose()
     }
 
-    Ui.PanelKeyCatcher {
-      id: keyCatcher
+    FocusScope {
+      id: focusScope
       anchors.fill: parent
-      blocked: root.editingLocation
+      focus: moonWindow.visible
 
-      onCloseRequested: {
-        if (root.editingLocation) root.hideLocationEditor()
-        else root.close()
-      }
-
-      onMoveRequested: function(dx, dy) {
-        if (dx !== 0) moonModel.stepDate(dx)
-      }
-
-      onTextKey: function(text) {
-        var key = text.toLowerCase()
-        if (key === "t") moonModel.jumpToToday()
-        else if (key === "f") moonModel.jumpToPhase(2)
-        else if (key === "n") moonModel.jumpToPhase(0)
-        else if (key === "r") moonModel.refresh()
-        // Lowercase l is reserved by PanelKeyCatcher for Vim-style Right.
-        else if (text === "L") root.showLocationEditor()
-      }
-
-      Flickable {
-        id: mainFlick
+      Rectangle {
         anchors.fill: parent
-        visible: !root.editingLocation
-        clip: true
-        contentWidth: width
-        contentHeight: moonContent.implicitHeight
-        boundsBehavior: Flickable.StopAtBounds
-        flickableDirection: Flickable.VerticalFlick
+        color: Color.popups.background
 
-        Controls.ScrollBar.vertical: Controls.ScrollBar {
-          policy: mainFlick.contentHeight > mainFlick.height
-            ? Controls.ScrollBar.AlwaysOn : Controls.ScrollBar.AlwaysOff
-        }
+        Ui.PanelKeyCatcher {
+          id: keyCatcher
+          anchors.fill: parent
+          anchors.margins: Style.spacing.popupPadding
+          blocked: root.editingLocation
 
-        MoonshotContent {
-          id: moonContent
-          width: mainFlick.width
-          model: moonModel
-          settings: root.settings
-          onPreviousRequested: moonModel.stepDate(-1)
-          onTodayRequested: moonModel.jumpToToday()
-          onNextRequested: moonModel.stepDate(1)
-          onPhaseRequested: function(quarter) { moonModel.jumpToPhase(quarter) }
-          onLocationRequested: root.showLocationEditor()
-          onRefreshRequested: moonModel.refresh()
-        }
-      }
+          onCloseRequested: {
+            if (root.editingLocation) root.hideLocationEditor()
+            else root.requestClose()
+          }
 
-      Flickable {
-        id: locationFlick
-        anchors.fill: parent
-        visible: root.editingLocation
-        clip: true
-        contentWidth: width
-        contentHeight: locationEditor.implicitHeight
-        boundsBehavior: Flickable.StopAtBounds
-        flickableDirection: Flickable.VerticalFlick
+          onMoveRequested: function(dx, dy) {
+            if (dx !== 0 && root.model) root.model.stepDate(dx)
+          }
 
-        Controls.ScrollBar.vertical: Controls.ScrollBar {
-          policy: locationFlick.contentHeight > locationFlick.height
-            ? Controls.ScrollBar.AlwaysOn : Controls.ScrollBar.AlwaysOff
-        }
+          onTextKey: function(text) {
+            if (!root.model) return
+            var key = text.toLowerCase()
+            if (key === "t") root.model.jumpToToday()
+            else if (key === "f") root.model.jumpToPhase(2)
+            else if (key === "n") root.model.jumpToPhase(0)
+            else if (key === "r") root.model.refresh()
+            // Lowercase l is reserved by PanelKeyCatcher for Vim-style Right.
+            else if (text === "L") root.showLocationEditor()
+          }
 
-        LocationEditor {
-          id: locationEditor
-          width: locationFlick.width
-          visible: root.editingLocation
-          model: moonModel
-          onClosed: root.hideLocationEditor()
+          Flickable {
+            id: mainFlick
+            anchors.fill: parent
+            visible: !root.editingLocation
+            clip: true
+            contentWidth: width
+            contentHeight: moonContentLoader.item ? moonContentLoader.item.implicitHeight : 0
+            boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.VerticalFlick
+            interactive: contentHeight > height
+
+            Controls.ScrollBar.vertical: Controls.ScrollBar {
+              policy: mainFlick.contentHeight > mainFlick.height
+                ? Controls.ScrollBar.AlwaysOn : Controls.ScrollBar.AlwaysOff
+            }
+
+            Loader {
+              id: moonContentLoader
+              width: mainFlick.width
+              active: root.model !== null
+
+              sourceComponent: MoonshotContent {
+                width: mainFlick.width
+                model: root.model
+                settings: root.settings
+                onPreviousRequested: root.model.stepDate(-1)
+                onTodayRequested: root.model.jumpToToday()
+                onNextRequested: root.model.stepDate(1)
+                onPhaseRequested: function(quarter) { root.model.jumpToPhase(quarter) }
+                onLocationRequested: root.showLocationEditor()
+                onRefreshRequested: root.model.refresh()
+                onCloseRequested: root.requestClose()
+              }
+            }
+          }
+
+          Flickable {
+            id: locationFlick
+            anchors.fill: parent
+            visible: root.editingLocation
+            clip: true
+            contentWidth: width
+            contentHeight: locationEditorLoader.item ? locationEditorLoader.item.implicitHeight : 0
+            boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.VerticalFlick
+            interactive: contentHeight > height
+
+            Controls.ScrollBar.vertical: Controls.ScrollBar {
+              policy: locationFlick.contentHeight > locationFlick.height
+                ? Controls.ScrollBar.AlwaysOn : Controls.ScrollBar.AlwaysOff
+            }
+
+            Loader {
+              id: locationEditorLoader
+              width: locationFlick.width
+              active: root.model !== null
+              visible: root.editingLocation
+
+              sourceComponent: LocationEditor {
+                width: locationFlick.width
+                visible: root.editingLocation
+                model: root.model
+                onClosed: root.hideLocationEditor()
+              }
+            }
+          }
         }
       }
     }

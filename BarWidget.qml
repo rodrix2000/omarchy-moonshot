@@ -6,47 +6,26 @@ Ui.BarWidget {
   id: root
   moduleName: "io.github.rodrix2000.moonshot"
 
-  function injectPanel() {
-    var target = panelLoader.item
-    if (!target) return
-    if ("bar" in target) target.bar = root.bar
-    if ("settings" in target) target.settings = root.settings
-    if ("anchorItem" in target) target.anchorItem = button
-    if ("hostWidget" in target) target.hostWidget = root
-  }
-
-  function refreshLocal() {
-    if (panelLoader.item && panelLoader.item.refresh) panelLoader.item.refresh()
-  }
-
-  function refresh() {
-    root.broadcast("refreshLocal")
-  }
-
-  function togglePanel() {
-    if (panelLoader.item && panelLoader.item.toggle) panelLoader.item.toggle()
-  }
-
-  readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
-
-  function open() {
-    if (panelLoader.item && panelLoader.item.openFromHotkey) panelLoader.item.openFromHotkey()
-  }
-
-  function close() {
-    if (panelLoader.item && panelLoader.item.close) panelLoader.item.close()
-  }
-
-  readonly property bool popoutSwitchClosing: panelLoader.item ? panelLoader.item.popoutSwitchClosing === true : false
-
-  function closeForPopoutSwitch() {
-    if (panelLoader.item) panelLoader.item.closeForPopoutSwitch()
-  }
-
-  readonly property var moonModel: panelLoader.item ? panelLoader.item.model : null
+  readonly property var hostShell: root.bar && root.bar.shell ? root.bar.shell : null
+  readonly property var moonModel: root.hostShell
+    && typeof root.hostShell.serviceFor === "function"
+    ? root.hostShell.serviceFor(root.moduleName) : null
   property string transientDisplayMode: ""
   readonly property string displayMode: transientDisplayMode !== ""
     ? transientDisplayMode : root.setting("displayMode", "disk")
+
+  function syncServiceSettings() {
+    if (root.moonModel) root.moonModel.settings = root.settings || ({})
+  }
+
+  function refresh() {
+    if (root.moonModel && typeof root.moonModel.refresh === "function") root.moonModel.refresh()
+  }
+
+  function togglePanel() {
+    if (root.hostShell && typeof root.hostShell.toggle === "function")
+      root.hostShell.toggle(root.moduleName, "{}")
+  }
 
   function cycleDisplayMode() {
     var modes = ["disk", "illumination", "phase", "next-full", "moonrise"]
@@ -73,55 +52,45 @@ Ui.BarWidget {
   }
 
   function nextFullMoon() {
-    if (!moonModel || !moonModel.nextMajorPhases) return null
-    for (var i = 0; i < moonModel.nextMajorPhases.length; i++)
-      if (moonModel.nextMajorPhases[i].quarter === 2) return moonModel.nextMajorPhases[i]
+    if (!root.moonModel || !root.moonModel.nextMajorPhases) return null
+    for (var i = 0; i < root.moonModel.nextMajorPhases.length; i++)
+      if (root.moonModel.nextMajorPhases[i].quarter === 2) return root.moonModel.nextMajorPhases[i]
     return null
   }
 
   readonly property string barText: {
-    if (!moonModel || root.vertical) return ""
+    if (!root.moonModel || root.vertical) return ""
     if (root.displayMode === "illumination") {
-      return Math.round(moonModel.illuminationPercent) + "%"
+      return Math.round(root.moonModel.illuminationPercent) + "%"
     }
     if (root.displayMode === "phase") {
-      return moonModel.phaseName
+      return root.moonModel.phaseName
     }
     if (root.displayMode === "next-full") {
       var full = root.nextFullMoon()
       return full ? ("Full " + root.daysUntil(full.instantUtc)) : "Full soon"
     }
     if (root.displayMode === "moonrise") {
-      if (moonModel.riseEvent && moonModel.riseEvent.localDateTime) {
-        return root.localeTime(moonModel.riseEvent.localDateTime)
+      if (root.moonModel.riseEvent && root.moonModel.riseEvent.localDateTime) {
+        return root.localeTime(root.moonModel.riseEvent.localDateTime)
       }
     }
     return ""
   }
 
   readonly property string barTooltip: {
-    if (!moonModel) return "Moonshot"
-    return moonModel.phaseName + " · " + Math.round(moonModel.illuminationPercent)
-      + "% illuminated" + (moonModel.locationConfigured ? " · " + moonModel.locationLabel : " · no location")
+    if (!root.moonModel) return "Moonshot — service loading"
+    return root.moonModel.phaseName + " · " + Math.round(root.moonModel.illuminationPercent)
+      + "% illuminated" + (root.moonModel.locationConfigured ? " · " + root.moonModel.locationLabel : " · no location")
   }
 
   visible: true
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  onBarChanged: injectPanel()
-  onSettingsChanged: injectPanel()
-
-  Loader {
-    id: panelLoader
-    active: true
-    source: Qt.resolvedUrl("Panel.qml")
-    visible: false
-    onLoaded: {
-      root.injectPanel()
-      Qt.callLater(root.injectPanel)
-    }
-  }
+  onMoonModelChanged: syncServiceSettings()
+  onSettingsChanged: syncServiceSettings()
+  Component.onCompleted: syncServiceSettings()
 
   Ui.WidgetButton {
     id: button
@@ -130,6 +99,8 @@ Ui.BarWidget {
     tooltipText: root.barTooltip
     labelVisible: false
     hasVisualContent: true
+    active: root.hostShell && typeof root.hostShell.isPluginOpen === "function"
+      ? root.hostShell.isPluginOpen(root.moduleName) : false
 
     fixedWidth: root.vertical ? root.barSize : (contentRow.implicitWidth + (root.barText !== "" ? Style.spacing.controlPaddingX * 2 : Style.spacing.md * 2))
     fixedHeight: root.barSize

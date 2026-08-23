@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-08-23
+
+### Changed
+- Open Moonshot as a native Omarchy floating panel while retaining the living bar indicator.
+- Match PhotoDock and Omarchy Chess window behavior so Hyprland’s standard `Super+W` command closes Moonshot.
+- Increase the default panel height so the primary lunar view fits without scrolling, while preserving overflow scrolling after a small manual resize.
+- Add an explicit themed close control alongside the existing Escape and bar-toggle dismissal paths.
+
+### Fixed
+- Keep shell open-state bookkeeping synchronized when Hyprland closes the Moonshot window.
+- Share one lunar model between the panel and bar widget so location, phase, refresh, and theme-aware display settings stay in sync.
+
 ## [0.1.0] - 2026-08-22
 
 ### Added
