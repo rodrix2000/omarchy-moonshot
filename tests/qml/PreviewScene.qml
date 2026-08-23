@@ -157,7 +157,7 @@ Window {
     }
 
     Rectangle {
-      id: codexMock
+      id: companionMock
       anchors.top: barMock.bottom
       anchors.topMargin: 12
       anchors.bottom: parent.bottom
@@ -172,7 +172,7 @@ Window {
       clip: true
 
       Rectangle {
-        id: codexTitleBar
+        id: notesTitleBar
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -198,12 +198,12 @@ Window {
               width: 7
               height: 7
               radius: 2
-              color: codexTitleBar.color
+              color: notesTitleBar.color
             }
           }
 
           Text {
-            text: "Codex · Moonshot workspace"
+            text: "Travel Notes · Austin evening"
             font.family: Style.font.family
             font.pixelSize: 12
             font.bold: true
@@ -223,8 +223,8 @@ Window {
       }
 
       Rectangle {
-        id: codexSidebar
-        anchors.top: codexTitleBar.bottom
+        id: placesSidebar
+        anchors.top: notesTitleBar.bottom
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         width: 146
@@ -242,7 +242,7 @@ Window {
           spacing: 8
 
           Text {
-            text: "TASKS"
+            text: "PLACES"
             font.family: Style.font.family
             font.pixelSize: 9
             font.bold: true
@@ -261,7 +261,7 @@ Window {
               anchors.left: parent.left
               anchors.leftMargin: 10
               anchors.verticalCenter: parent.verticalCenter
-              text: "Moonshot"
+              text: "Austin, Texas"
               font.family: Style.font.family
               font.pixelSize: 11
               font.bold: true
@@ -270,7 +270,7 @@ Window {
           }
 
           Text {
-            text: "PhotoDock"
+            text: "Reykjavík"
             leftPadding: 10
             font.family: Style.font.family
             font.pixelSize: 11
@@ -278,7 +278,7 @@ Window {
           }
 
           Text {
-            text: "Omarchy Chess"
+            text: "Tokyo"
             leftPadding: 10
             font.family: Style.font.family
             font.pixelSize: 11
@@ -291,7 +291,7 @@ Window {
           anchors.leftMargin: 12
           anchors.bottom: parent.bottom
           anchors.bottomMargin: 14
-          text: "main · v0.1.2"
+          text: "Austin trip · Aug 22"
           font.family: Style.font.family
           font.pixelSize: 9
           color: "#5f6b78"
@@ -299,9 +299,9 @@ Window {
       }
 
       Item {
-        anchors.top: codexTitleBar.bottom
+        anchors.top: notesTitleBar.bottom
         anchors.bottom: parent.bottom
-        anchors.left: codexSidebar.right
+        anchors.left: placesSidebar.right
         anchors.right: parent.right
 
         Column {
@@ -314,7 +314,7 @@ Window {
           spacing: 18
 
           Text {
-            text: "Moonshot tiles with your workspace"
+            text: "Evening sky plan"
             font.family: Style.font.family
             font.pixelSize: 20
             font.bold: true
@@ -323,7 +323,7 @@ Window {
 
           Text {
             width: parent.width
-            text: "The lunar window opens beside the active app, stays on the current workspace, and returns to a normal tile after fullscreen use."
+            text: "Keep travel notes open while Moonshot tracks the local lunar view beside them on the same workspace."
             wrapMode: Text.WordWrap
             lineHeight: 1.35
             font.family: Style.font.family
@@ -345,32 +345,32 @@ Window {
               spacing: 11
 
               Text {
-                text: "LOCAL VERIFICATION"
+                text: "TONIGHT IN AUSTIN"
                 font.family: Style.font.family
                 font.pixelSize: 9
                 font.bold: true
                 color: "#6f8296"
               }
               Text {
-                text: "workspace     2"
+                text: "Moonrise      4:42 PM"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: "#c7d0da"
               }
               Text {
-                text: "layout        dwindle · two tiles"
+                text: "Moonset       1:27 AM"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: "#c7d0da"
               }
               Text {
-                text: "moonshot      557 × 674 · fullscreen 0"
+                text: "Phase         Waxing Gibbous · 77%"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: "#c7d0da"
               }
               Text {
-                text: "content       complete · no scrollbar"
+                text: "Horizon       Above · 28°"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: "#82b39a"
@@ -389,7 +389,7 @@ Window {
             Text {
               anchors.fill: parent
               anchors.margins: 14
-              text: "Moonshot is ready on workspace 2."
+              text: "Saved locations stay one click away in Moonshot."
               verticalAlignment: Text.AlignVCenter
               font.family: Style.font.family
               font.pixelSize: 12
@@ -402,7 +402,7 @@ Window {
 
     BorderSurface {
       id: panelMock
-      width: codexMock.width
+      width: companionMock.width
       anchors.top: barMock.bottom
       anchors.topMargin: 12
       anchors.bottom: parent.bottom
