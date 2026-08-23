@@ -4,7 +4,7 @@
 
 Moonshot places a living lunar indicator in the Omarchy bar and opens a calm, location-aware lunar panel with the current phase, illumination percentage, exact moon age, upcoming major quarter phases, and local moonrise/moonset timings.
 
-![Moonshot Preview](preview.png)
+![Moonshot tiled beside a workspace app with the Omarchy bar visible](preview.png)
 
 ## Features
 
