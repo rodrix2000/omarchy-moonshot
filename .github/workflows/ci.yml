@@ -3,12 +3,18 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -17,14 +23,23 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run Python Unit & Astronomy Tests
-        run: |
-          make test
+      - name: Check formatting and source syntax
+        run: make format-check lint
 
-      - name: Run Protocol Validation
-        run: |
-          make test-protocol
+      - name: Run Python, astronomy, protocol, integration, and performance tests
+        run: make test test-astronomy test-protocol test-integration test-performance
 
-      - name: Run Package Checks
+      - name: Run portable accessibility and security gates
+        run: make test-accessibility package-check safety-check
+
+      - name: Verify release metadata on tags
+        if: github.ref_type == 'tag'
         run: |
-          make package-check
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          manifest = json.loads(Path("manifest.json").read_text(encoding="utf-8"))
+          assert os.environ["GITHUB_REF_NAME"] == "v" + manifest["version"]
+          assert f'## [{manifest["version"]}]' in Path("CHANGELOG.md").read_text(encoding="utf-8")
+          PY

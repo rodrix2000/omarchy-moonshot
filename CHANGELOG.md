@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made helper requests one-active/newest-pending with a three-second timeout, bounded output, response validation, and last-good fallback.
 - Made location saves validate before commit and persist atomically in XDG state with user-only permissions.
 - Replaced permissive QML smoke gates and placeholder accessibility/format checks with failing automated checks.
+- Prepared a privacy-safe marketplace preview and portable CI/package checks for the public release.
 
 ### Security
 - Bounded and normalized Open-Meteo responses, added a five-second search timeout, and stopped raw helper stderr from reaching the UI.

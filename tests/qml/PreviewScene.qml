@@ -27,7 +27,7 @@ Window {
       localDateTime: "2026-08-22T19:30:00-05:00"
     })
     property bool locationConfigured: true
-    property string locationLabel: "Celina, Texas"
+    property string locationLabel: "Austin, Texas"
     property real phaseAngleDeg: 122.5
     property real illuminationFraction: 0.77
     property real illuminationPercent: 77

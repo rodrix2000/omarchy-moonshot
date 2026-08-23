@@ -25,11 +25,39 @@ if find . -type d -name '__pycache__' -print -quit | grep -q .; then
   exit 1
 fi
 
-# Check manifest exists and validates
-if ! omarchy plugin validate .; then
-  echo "error: omarchy plugin validate failed" >&2
-  exit 1
-fi
+# Perform portable manifest/package checks here so this script can run on a
+# stock CI host. The release gate separately runs `omarchy plugin validate` on
+# the supported Omarchy machine.
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+root = Path.cwd()
+manifest_path = root / "manifest.json"
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+required = {"schemaVersion", "id", "name", "version", "license", "kinds", "entryPoints"}
+missing = sorted(required - manifest.keys())
+assert not missing, f"manifest missing required fields: {missing}"
+assert manifest["schemaVersion"] == 1
+assert manifest["id"] == "io.github.rodrix2000.moonshot"
+assert manifest["license"] == "MIT"
+assert manifest["kinds"] == ["bar-widget"]
+assert manifest["entryPoints"].get("barWidget") == "BarWidget.qml"
+
+for entry in manifest["entryPoints"].values():
+    path = Path(entry)
+    assert not path.is_absolute() and ".." not in path.parts, entry
+    assert (root / path).is_file(), entry
+
+for required_file in (
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md",
+    "preview.png",
+):
+    assert (root / required_file).is_file(), required_file
+PY
 
 # The runtime texture must remain a bounded, true-alpha PNG. This prevents a
 # generated checkerboard or an accidentally huge source image from shipping.
