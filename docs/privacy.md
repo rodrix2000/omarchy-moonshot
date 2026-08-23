@@ -10,7 +10,7 @@
 
 ## Local Data
 
-- Moonshot stores only the configured label, latitude, longitude, IANA time zone, and elevation.
+- Moonshot stores only the active location and up to six saved places, each containing a label, latitude, longitude, IANA time zone, and elevation.
 - State lives at `${XDG_STATE_HOME:-$HOME/.local/state}/moonshot/settings-v1.json`, is written atomically, and is restricted to the user (`0700` directory, `0600` file).
 - Helper stderr and malformed provider responses are never shown verbatim, preventing accidental disclosure of private values or tracebacks.
-- Clearing the location rewrites the state as unconfigured. Removing the state directory removes Moonshot’s saved location.
+- Clearing the active location keeps saved places available for travel. The confirmed `Reset all` action, or removing the state directory, removes every saved place.

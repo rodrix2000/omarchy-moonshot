@@ -58,7 +58,8 @@ run_scene() {
 
 run_scene tests/qml/RenderSmoke.qml "RenderSmoke: Canvas rendered successfully"
 run_scene tests/qml/LifecycleSmoke.qml "LifecycleSmoke: MoonshotModel received snapshot OK"
-run_scene tests/qml/StateSmoke.qml "StateSmoke: validated location persisted OK"
+run_scene tests/qml/StateSmoke.qml "StateSmoke: travel presets persisted and switched OK"
+run_scene tests/qml/LocationEditorSmoke.qml "LocationEditorSmoke: saved places and guarded reset OK"
 
 python3 - "$stage_dir/state/moonshot/settings-v1.json" <<'PY'
 from pathlib import Path
@@ -74,6 +75,11 @@ if doc.get("version") != 1 or doc.get("locationConfigured") is not True:
     raise SystemExit("qml-runtime-check: persisted state has an invalid schema")
 if doc.get("timeZone") != "America/Chicago" or doc.get("locationLabel") != "Runtime Test":
     raise SystemExit("qml-runtime-check: persisted state does not match validated input")
+saved = doc.get("savedLocations")
+if not isinstance(saved, list) or len(saved) != 2:
+    raise SystemExit("qml-runtime-check: saved-place list has an invalid shape")
+if [place.get("locationLabel") for place in saved] != ["Runtime Test", "Travel Test"]:
+    raise SystemExit("qml-runtime-check: saved-place order was not persisted")
 if stat.S_IMODE(path.stat().st_mode) != 0o600:
     raise SystemExit("qml-runtime-check: persisted state is not mode 0600")
 if stat.S_IMODE(path.parent.stat().st_mode) != 0o700:

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Date navigation supporting day stepping, jumps to Today, and jumps to next Full/New Moon.
 - Offline-first architecture powered by pinned vendored Astronomy Engine (v2.1.19).
 - Location editor supporting manual coordinates, IANA time zones, and explicit city search.
+- A six-place travel list with one-click switching, clear-active behavior, and confirmed reset-all handling.
 - Full keyboard navigation, shortcuts, visible focus, and reduced-motion support.
 
 ### Changed
@@ -23,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made production surfaces and controls use Omarchy semantic theme tokens; kept lunar albedo neutral for theme independence.
 - Preserved exact UTC instants when jumping to New or Full Moon and corrected remote-zone wall-time formatting.
 - Resolved Omarchy’s Vim-style lowercase `l` navigation conflict by assigning the Location shortcut to `Shift+L`.
+- Made Omarchy Weather import feedback appear only after an explicit import request instead of when the editor opens.
 - Made helper requests one-active/newest-pending with a three-second timeout, bounded output, response validation, and last-good fallback.
 - Made location saves validate before commit and persist atomically in XDG state with user-only permissions.
 - Replaced permissive QML smoke gates and placeholder accessibility/format checks with failing automated checks.

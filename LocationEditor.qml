@@ -28,6 +28,8 @@ Item {
   property string validationError: ""
   property string infoMessage: ""
   property bool saving: false
+  property bool resetAllArmed: false
+  property bool weatherImportRequested: false
 
   implicitWidth: Style.space(390)
   implicitHeight: editorColumn.implicitHeight
@@ -48,6 +50,9 @@ Item {
     root.validationError = ""
     root.infoMessage = ""
     root.saving = false
+    root.resetAllArmed = false
+    root.weatherImportRequested = false
+    resetConfirmTimer.stop()
   }
 
   function cancel() {
@@ -84,6 +89,43 @@ Item {
     var label = root.editLabel.trim() || (lat.toFixed(2) + ", " + lon.toFixed(2))
     root.saving = true
     root.model.validateAndSaveLocation(label, lat, lon, tzName, elev)
+  }
+
+  function compactPlaceLabel(place) {
+    var label = String(place && place.locationLabel ? place.locationLabel : "Saved place")
+    return label.length > 24 ? label.substring(0, 23) + "…" : label
+  }
+
+  function savedPlaceTooltip(place) {
+    if (!place) return "Use saved place"
+    return String(place.locationLabel || "Saved place") + " · " + String(place.timeZone || "")
+  }
+
+  function activateSavedPlace(place) {
+    root.validationError = ""
+    root.infoMessage = ""
+    root.resetAllArmed = false
+    resetConfirmTimer.stop()
+    if (root.model.isActiveLocation(place)) {
+      root.closed()
+      return
+    }
+    root.saving = true
+    root.model.activateSavedLocation(place)
+  }
+
+  function requestResetAll() {
+    root.validationError = ""
+    if (!root.resetAllArmed) {
+      root.resetAllArmed = true
+      root.infoMessage = "Select Confirm reset to clear the active location and forget every saved place."
+      resetConfirmTimer.restart()
+      return
+    }
+    resetConfirmTimer.stop()
+    root.resetAllArmed = false
+    root.model.resetLocations()
+    root.closed()
   }
 
   function normalizedSearchResults(doc) {
@@ -180,6 +222,7 @@ Item {
   function importWeather() {
     root.validationError = ""
     root.infoMessage = ""
+    root.weatherImportRequested = true
     weatherFile.reload()
   }
 
@@ -188,6 +231,8 @@ Item {
     path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
     printErrors: false
     onLoaded: {
+      if (!root.weatherImportRequested) return
+      root.weatherImportRequested = false
       try {
         var data = JSON.parse(text())
         if (!data || data.latitude === undefined || data.longitude === undefined)
@@ -204,7 +249,11 @@ Item {
         root.validationError = "Omarchy Weather does not have importable coordinates."
       }
     }
-    onLoadFailed: root.validationError = "Omarchy Weather does not have a saved location."
+    onLoadFailed: {
+      if (!root.weatherImportRequested) return
+      root.weatherImportRequested = false
+      root.validationError = "Omarchy Weather does not have a saved location."
+    }
   }
 
   Timer {
@@ -212,6 +261,16 @@ Item {
     interval: 350
     repeat: false
     onTriggered: root.performSearch()
+  }
+
+  Timer {
+    id: resetConfirmTimer
+    interval: 5000
+    repeat: false
+    onTriggered: {
+      root.resetAllArmed = false
+      if (root.infoMessage.indexOf("Select Confirm reset") === 0) root.infoMessage = ""
+    }
   }
 
   Connections {
@@ -279,6 +338,68 @@ Item {
     }
 
     Ui.PanelSeparator { foreground: Color.popups.text }
+
+    Column {
+      id: savedPlacesSection
+      width: parent.width
+      visible: root.model.savedLocations.length > 0
+      spacing: Style.spacing.sm
+
+      Item {
+        width: parent.width
+        height: Math.max(savedPlacesTitle.implicitHeight, resetAllButton.implicitHeight)
+
+        Ui.PanelSectionHeader {
+          id: savedPlacesTitle
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          text: "Saved places"
+          foreground: Color.popups.text
+        }
+
+        Ui.Button {
+          id: resetAllButton
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          text: root.resetAllArmed ? "Confirm reset" : "Reset all"
+          tooltipText: "Clear the active location and forget all saved places"
+          focusable: true
+          enabled: !root.saving
+          foreground: root.resetAllArmed ? Color.urgent : Color.popups.text
+          onClicked: root.requestResetAll()
+        }
+      }
+
+      Grid {
+        id: savedPlacesGrid
+        width: parent.width
+        columns: 2
+        columnSpacing: Style.spacing.controlGap
+        rowSpacing: Style.spacing.controlGap
+        readonly property int rowCount: Math.ceil(root.model.savedLocations.length / columns)
+        readonly property real cellWidth: (width - columnSpacing) / columns
+        height: rowCount * Style.spacing.controlHeight
+          + Math.max(0, rowCount - 1) * rowSpacing
+
+        Repeater {
+          model: root.model.savedLocations
+          delegate: Ui.Button {
+            id: savedPlaceButton
+            required property var modelData
+            width: savedPlacesGrid.cellWidth
+            height: Style.spacing.controlHeight
+            text: root.compactPlaceLabel(savedPlaceButton.modelData)
+            tooltipText: root.savedPlaceTooltip(savedPlaceButton.modelData)
+            selected: root.model.isActiveLocation(savedPlaceButton.modelData)
+            bordered: true
+            focusable: true
+            enabled: !root.saving
+            foreground: Color.popups.text
+            onClicked: root.activateSavedPlace(savedPlaceButton.modelData)
+          }
+        }
+      }
+    }
 
     Row {
       spacing: Style.spacing.controlGap
@@ -521,12 +642,15 @@ Item {
         Ui.Button {
           text: "Import Weather"
           focusable: true
+          enabled: !root.saving
           foreground: Color.popups.text
           onClicked: root.importWeather()
         }
         Ui.Button {
-          text: "Clear"
+          text: "Clear active"
+          tooltipText: "Use no location while keeping saved places"
           focusable: true
+          enabled: !root.saving && root.model.locationConfigured
           foreground: Color.popups.text
           onClicked: {
             root.model.clearLocation()
@@ -539,6 +663,7 @@ Item {
         id: saveButton
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
+        visible: root.tabMode === "manual"
         text: root.saving ? "Validating…" : "Save location"
         selected: true
         enabled: !root.saving

@@ -14,6 +14,7 @@ Moonshot places a living lunar indicator in the Omarchy bar and opens a calm, lo
 - **Local Rise, Set & Horizon:** Precise local-day rise and set calculations with upper-limb and refraction corrections.
 - **Date Browsing:** Step through past or future dates with smooth transitions and quick jumps back to Today or the next Full/New Moon.
 - **Location Flexibility:** Works fully offline with manual coordinates & IANA time zone, or via optional city search (Open-Meteo).
+- **Travel-Friendly Places:** Keeps up to six validated places for one-click switching; clear the active location without losing them, or reset everything with confirmation.
 - **Omarchy Native:** Theme-adaptive palette, smooth popout lifecycle, keyboard accessibility, and reduced-motion support.
 - **Zero Tracking:** No telemetry, analytics, tracking, or background daemons.
 
@@ -58,6 +59,7 @@ omarchy bar move io.github.rodrix2000.moonshot --section right
 - **Manual Mode:** Provide your latitude, longitude, and IANA time zone directly for 100% offline rise/set computation.
 - **City Search:** Optional geocoding queries Open-Meteo over HTTPS. No location data is sent in the background.
 - **Local State:** A validated location is stored atomically in `${XDG_STATE_HOME:-$HOME/.local/state}/moonshot/settings-v1.json` with user-only permissions. Host-provided plugin settings take precedence when present.
+- **Saved Places:** Each validated location moves to the front of a six-place local list. `Clear active` returns to no-location mode while retaining that list; `Reset all` clears both after a confirming second click.
 
 ## Rendering Convention
 

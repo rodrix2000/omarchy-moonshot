@@ -22,6 +22,8 @@ Item {
   property real elevationM: 0.0
   property string timeZone: ""
   property var pendingLocation: null
+  readonly property int savedLocationLimit: 6
+  property var savedLocations: []
 
   // Ephemeris snapshot (last-good).
   property var snapshot: null
@@ -66,6 +68,7 @@ Item {
         var accepted = root.pendingLocation
         root.pendingLocation = null
         root.applyLocation(accepted)
+        root.savedLocations = root.locationListWith(accepted, root.savedLocations)
         root.saveSettingsState()
         root.locationSaveFinished(true, "")
       }
@@ -100,17 +103,97 @@ Item {
     return typeof record.timeZone === "string" && record.timeZone.trim() !== ""
   }
 
+  function normalizedLocationRecord(record) {
+    if (!root.validLocationRecord(record)) return null
+    var latitudeValue = Number(record.latitude)
+    var longitudeValue = Number(record.longitude)
+    var label = String(record.locationLabel || "").trim().substring(0, 128)
+    return {
+      locationConfigured: true,
+      locationLabel: label !== "" ? label
+        : latitudeValue.toFixed(2) + ", " + longitudeValue.toFixed(2),
+      latitude: latitudeValue,
+      longitude: longitudeValue,
+      timeZone: String(record.timeZone).trim(),
+      elevationM: Number(record.elevationM || 0)
+    }
+  }
+
+  function sameLocation(first, second) {
+    var a = root.normalizedLocationRecord(first)
+    var b = root.normalizedLocationRecord(second)
+    if (a === null || b === null) return false
+    return Math.abs(a.latitude - b.latitude) < 0.000001
+      && Math.abs(a.longitude - b.longitude) < 0.000001
+      && a.timeZone === b.timeZone
+  }
+
+  function normalizedSavedLocations(records) {
+    if (!Array.isArray(records)) return []
+    var result = []
+    for (var i = 0; i < records.length && result.length < root.savedLocationLimit; i++) {
+      var candidate = root.normalizedLocationRecord(records[i])
+      if (candidate === null) continue
+      var duplicate = false
+      for (var j = 0; j < result.length; j++) {
+        if (root.sameLocation(candidate, result[j])) {
+          duplicate = true
+          break
+        }
+      }
+      if (!duplicate) result.push(candidate)
+    }
+    return result
+  }
+
+  function locationListWith(record, records) {
+    var candidate = root.normalizedLocationRecord(record)
+    if (candidate === null) return root.normalizedSavedLocations(records)
+    var result = [candidate]
+    var existing = root.normalizedSavedLocations(records)
+    for (var i = 0; i < existing.length && result.length < root.savedLocationLimit; i++) {
+      if (!root.sameLocation(candidate, existing[i])) result.push(existing[i])
+    }
+    return result
+  }
+
+  function isActiveLocation(record) {
+    if (!root.locationConfigured) return false
+    return root.sameLocation(record, {
+      locationConfigured: true,
+      locationLabel: root.locationLabel,
+      latitude: root.latitude,
+      longitude: root.longitude,
+      timeZone: root.timeZone,
+      elevationM: root.elevationM
+    })
+  }
+
   function applyLocation(record) {
-    root.locationConfigured = record && record.locationConfigured === true
-    root.locationLabel = root.locationConfigured ? String(record.locationLabel || "Custom location") : ""
-    root.latitude = root.locationConfigured ? Number(record.latitude) : null
-    root.longitude = root.locationConfigured ? Number(record.longitude) : null
-    root.timeZone = root.locationConfigured ? String(record.timeZone || "") : ""
-    root.elevationM = root.locationConfigured ? Number(record.elevationM || 0) : 0.0
+    var normalized = root.normalizedLocationRecord(record)
+    root.locationConfigured = normalized !== null
+    root.locationLabel = normalized ? normalized.locationLabel : ""
+    root.latitude = normalized ? normalized.latitude : null
+    root.longitude = normalized ? normalized.longitude : null
+    root.timeZone = normalized ? normalized.timeZone : ""
+    root.elevationM = normalized ? normalized.elevationM : 0.0
   }
 
   function hydrateSettings(raw) {
     if (root.settingsLoaded) return
+
+    var persisted = null
+    if (String(raw || "").trim() !== "") {
+      try {
+        var parsed = JSON.parse(String(raw))
+        if (parsed && parsed.version === 1) persisted = parsed
+      } catch (e) {
+        // Corrupt state is treated as unconfigured; no private values are logged.
+      }
+    }
+
+    root.savedLocations = root.normalizedSavedLocations(
+      persisted && persisted.savedLocations ? persisted.savedLocations : [])
 
     var record = null
     if (root.settings && root.settings.latitude !== undefined && root.settings.latitude !== null) {
@@ -122,17 +205,14 @@ Item {
         timeZone: root.settings.timeZone || "",
         elevationM: root.settings.elevationM || 0
       }
-    } else if (String(raw || "").trim() !== "") {
-      try {
-        var parsed = JSON.parse(String(raw))
-        if (parsed && parsed.version === 1) record = parsed
-      } catch (e) {
-        // Corrupt state is treated as unconfigured; no private values are logged.
-      }
-    }
+    } else if (persisted) record = persisted
 
-    if (root.validLocationRecord(record)) root.applyLocation(record)
-    else root.applyLocation({ locationConfigured: false })
+    if (root.validLocationRecord(record)) {
+      root.applyLocation(record)
+      root.savedLocations = root.locationListWith(record, root.savedLocations)
+    } else {
+      root.applyLocation({ locationConfigured: false })
+    }
 
     root.settingsLoaded = true
     root.refresh()
@@ -225,8 +305,30 @@ Item {
     client.requestSnapshot(root.requestOptions(candidate))
   }
 
+  function activateSavedLocation(record) {
+    var candidate = root.normalizedLocationRecord(record)
+    if (candidate === null) {
+      root.locationSaveFinished(false, "This saved place is no longer valid.")
+      return
+    }
+    root.validateAndSaveLocation(
+      candidate.locationLabel,
+      candidate.latitude,
+      candidate.longitude,
+      candidate.timeZone,
+      candidate.elevationM)
+  }
+
   function clearLocation() {
     root.pendingLocation = null
+    root.applyLocation({ locationConfigured: false })
+    root.saveSettingsState()
+    root.refresh()
+  }
+
+  function resetLocations() {
+    root.pendingLocation = null
+    root.savedLocations = []
     root.applyLocation({ locationConfigured: false })
     root.saveSettingsState()
     root.refresh()
@@ -241,7 +343,8 @@ Item {
       latitude: root.latitude,
       longitude: root.longitude,
       timeZone: root.timeZone,
-      elevationM: root.elevationM
+      elevationM: root.elevationM,
+      savedLocations: root.normalizedSavedLocations(root.savedLocations)
     }
     settingsFile.setText(JSON.stringify(stateData, null, 2) + "\n")
     permissionsTimer.restart()

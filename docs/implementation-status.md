@@ -21,7 +21,7 @@
 | Protocol and resilience | Automated verified | One-active/newest-pending scheduling, three-second timeout, 64 KiB ceilings, schema checks, redacted failures, and last-good state |
 | Rendering and primary panel | Visual/native verified | Native-size 1280×800 preview plus installed-shell capture inspected; generated RGBA texture, computed north-up terminator, and a full-height panel without unnecessary scrolling |
 | Date and event browsing | Automated verified | Calendar-safe day stepping and exact event-instant regression test |
-| Location and time zones | Core verified | Helper validation, DST/fractional-zone tests, atomic XDG state, bounded search source review; interactive provider search remains manual |
+| Location and time zones | Core verified | Helper validation, DST/fractional-zone tests, atomic XDG state, saved-place switching/reset smoke coverage, and bounded search source review; interactive provider search remains manual |
 | Accessibility and themes | Partially verified | Semantic tokens, vector controls, tab focus, accessible names, reduced-motion path, static gate, and current-theme native render; screen reader and live theme matrix remain manual |
 | Release quality | Candidate gates green | Automated gates and the audited-output native smoke pass are green; multi-monitor, full live-theme matrix, and assistive-technology checks remain before marketplace sign-off |
 
@@ -35,7 +35,7 @@
 | Phase, illumination, age, quarters | Verified | Helper and `MoonDisk.qml` | Golden/classification/ephemeris tests | Surface texture is illustrative; phase geometry is computed |
 | Observer rise/set and horizon | Verified | Helper | Rise/set and timezone tests | Apparent altitude and upper-limb/refraction conventions documented |
 | Date browsing and exact phase jumps | Verified | `MoonshotModel.qml`, helper | Exact-event and lifecycle tests | Browse dates anchor at 21:00 local; events retain exact UTC instant |
-| Location configuration | Implemented | `LocationEditor.qml`, `MoonshotModel.qml` | Bounds/redaction/protocol tests | Manual mode is offline; city search is explicit Open-Meteo HTTPS |
+| Location configuration | Implemented | `LocationEditor.qml`, `MoonshotModel.qml` | Bounds/redaction/protocol and saved-place state tests | Manual mode and six-place switching are offline; city search is explicit Open-Meteo HTTPS |
 | Theme-responsive UI | Source/current-theme verified | Production QML, `qs.Commons` tokens | QML lint/runtime preview plus installed-shell capture | Live light/dark/tinted/high-contrast switching remains manual |
 | Keyboard and accessibility | Partially verified | Panel, editor, custom controls | Static accessibility gate | Screen reader output and complete native tab order remain manual |
 | Privacy and bounded execution | Verified | Client, helper, editor, state model | Safety/protocol/package/runtime gates | No telemetry; raw stderr is not exposed; state is atomic and user-only |

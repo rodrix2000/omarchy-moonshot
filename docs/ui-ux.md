@@ -7,7 +7,7 @@
 3. **Horizon & Ephemeris:** Rise and set times with status indicators (above/below horizon).
 4. **Upcoming Phases:** Timeline of the next major lunar quarters.
 5. **Date Navigation:** Quick controls to browse past/future dates and jump back to Today or exact Full/New phases.
-6. **Location Configuration:** Integrated editor for manual coordinates, IANA time zone, or search.
+6. **Location Configuration:** Integrated editor for manual coordinates, IANA time zone, search, and one-click switching among up to six saved places.
 
 ## Interaction and Accessibility
 
@@ -15,6 +15,7 @@
 - All custom commands participate in tab focus, expose accessible names/roles, and use visible Omarchy focus and hover tokens.
 - Arrow keys and Vim-style lowercase `h`/`l` browse dates; `T`, `F`, `N`, `Shift+L`, and `R` provide direct actions; `Escape` backs out of location editing before closing the panel.
 - Location values are validated through the astronomy helper before they are committed. Search disclosure, loading, timeout, empty, invalid, and offline-manual states are explicit.
+- Saved places are de-duplicated and most-recent-first. `Clear active` preserves the travel list; `Reset all` requires a second confirming click before clearing it.
 - Controls use vector Canvas icons rather than emoji, so glyph availability and color behavior are consistent across fonts and themes.
 
 ## Theme Contract

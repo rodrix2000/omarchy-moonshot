@@ -45,6 +45,7 @@ Moonshot follows a strict separation of concerns between presentation and astron
 ## State and Rendering
 
 - Host plugin settings are read first. Otherwise, validated location state is loaded from `${XDG_STATE_HOME:-$HOME/.local/state}/moonshot/settings-v1.json`.
+- The same backward-compatible state document retains up to six normalized, de-duplicated saved places. Activating a place revalidates it through the helper and moves it to the front.
 - Writes are atomic; the state directory is mode `0700` and the file is normalized to `0600`.
 - Date browsing uses local calendar dates anchored at 21:00 in the selected location. Phase-event jumps use their exact UTC instant.
 - `MoonDisk.qml` combines a neutral generated RGBA texture with a computed north-up phase silhouette. Omarchy theme tokens control surrounding surfaces, rim, glow, focus, and text.
