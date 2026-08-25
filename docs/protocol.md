@@ -78,6 +78,48 @@ python3 scripts/moonshot_ephemeris.py snapshot \
         }
       ]
     },
+    "planning": {
+      "calendar": {
+        "year": 2026,
+        "month": 8,
+        "firstWeekday": 5,
+        "dayCount": 31,
+        "todayLocalDate": "2026-08-22",
+        "days": [
+          {
+            "date": "2026-08-01",
+            "day": 1,
+            "phaseAngleDeg": 220.13,
+            "phaseName": "Waning Gibbous",
+            "direction": "waning",
+            "illuminationFraction": 0.8826,
+            "illuminationPercent": 88.3,
+            "majorPhase": null
+          }
+        ]
+      },
+      "cycle": {
+        "startInstantUtc": "2026-08-12T17:37:11Z",
+        "endInstantUtc": "2026-09-11T03:27:28Z",
+        "durationDays": 29.41,
+        "ageDays": 10.08,
+        "position": 0.34269,
+        "events": []
+      },
+      "upcomingEclipses": [
+        {
+          "type": "lunar",
+          "kind": "partial",
+          "title": "Partial Lunar Eclipse",
+          "peakUtc": "2026-08-28T04:12:49Z",
+          "peakLocalDateTime": "2026-08-27T23:12:49-05:00",
+          "startLocalDateTime": "2026-08-27T20:23:36-05:00",
+          "endLocalDateTime": "2026-08-28T02:02:02-05:00",
+          "visibility": "visible",
+          "visibilityLabel": "Visible from this location"
+        }
+      ]
+    },
     "engine": {
       "name": "Astronomy Engine",
       "version": "2.1.19",

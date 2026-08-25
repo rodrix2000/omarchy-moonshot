@@ -8,21 +8,21 @@ Moonshot follows a strict separation of concerns between presentation and astron
 ┌────────────────────────────────────────────────────────┐
 │ Omarchy Bar & Shell (Quickshell / Qt6 QML)             │
 │                                                        │
-│   MoonshotService.qml ─> Shared MoonshotModel          │
+│   BarWidget.qml (Status Slot)                          │
 │         │                                              │
-│         ├── BarWidget.qml (Status Slot)                │
-│         │                                              │
-│         ├── Panel.qml (FloatingWindow)                 │
+│         ├── Panel.qml (anchored KeyboardPanel popup)   │
 │         │                 ├── MoonshotContent.qml      │
 │         │                 │   ├── MoonDisk + texture   │
 │         │                 │   ├── Observer metrics     │
-│         │                 │   └── Events + commands    │
+│         │                 │   ├── LunarCalendar.qml    │
+│         │                 │   ├── LunarTimeline.qml    │
+│         │                 │   └── EclipseTracking.qml  │
 │         │                 ├── Primary Metrics          │
 │         │                 ├── Phase Events List        │
 │         │                 ├── Date Navigation Bar      │
 │         │                 └── LocationEditor.qml       │
 │         │                                              │
-│   MoonshotModel.qml (Selection, XDG state, last-good)  │
+│         └── MoonshotModel.qml (state + last-good)      │
 │         │                                              │
 │   AstronomyClient.qml (Process Invocation)             │
 └─────────┼──────────────────────────────────────────────┘
@@ -49,5 +49,6 @@ Moonshot follows a strict separation of concerns between presentation and astron
 - Host plugin settings are read first. Otherwise, validated location state is loaded from `${XDG_STATE_HOME:-$HOME/.local/state}/moonshot/settings-v1.json`.
 - The same backward-compatible state document retains up to six normalized, de-duplicated saved places. Activating a place revalidates it through the helper and moves it to the front.
 - Writes are atomic; the state directory is mode `0700` and the file is normalized to `0600`.
-- Date browsing uses local calendar dates anchored at 21:00 in the selected location. Phase-event jumps use their exact UTC instant.
+- Date browsing and monthly calendar disks use local calendar dates anchored at 21:00 in the selected location. Phase and eclipse event jumps use their exact UTC instant.
+- Planning data is additive within protocol v1: one monthly calendar, one exact new-to-new cycle, and the next global lunar/solar eclipse pair. Observer coordinates never leave the local helper.
 - `MoonDisk.qml` combines a neutral generated RGBA texture with a computed north-up phase silhouette. Omarchy theme tokens control surrounding surfaces, rim, glow, focus, and text.

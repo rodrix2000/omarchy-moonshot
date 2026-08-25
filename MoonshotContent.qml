@@ -9,11 +9,16 @@ Item {
 
   required property var model
   property var settings: ({})
+  property string activeView: "tonight"
 
   signal previousRequested()
   signal todayRequested()
   signal nextRequested()
   signal phaseRequested(int quarter)
+  signal dateRequested(string isoDate)
+  signal previousMonthRequested()
+  signal nextMonthRequested()
+  signal eventRequested(string instantUtc, string localDateTime)
   signal locationRequested()
   signal refreshRequested()
   signal closeRequested()
@@ -27,6 +32,11 @@ Item {
   function setting(name, fallback) {
     var value = root.settings ? root.settings[name] : undefined
     return value === undefined || value === null ? fallback : value
+  }
+
+  function selectView(viewName) {
+    if (["tonight", "calendar", "timeline", "eclipses"].indexOf(viewName) < 0) return
+    root.activeView = viewName
   }
 
   function parsedDate(value) {
@@ -107,7 +117,8 @@ Item {
 
   Column {
     id: contentColumn
-    width: parent.width
+    width: Math.min(parent.width, Style.space(620))
+    anchors.horizontalCenter: parent.horizontalCenter
     spacing: Style.spacing.rowGap
 
     Item {
@@ -146,7 +157,7 @@ Item {
         width: Style.spacing.controlHeight
         height: Style.spacing.controlHeight
         iconName: "close"
-        tooltipText: "Close Moonshot (Escape or Super+W)"
+        tooltipText: "Close Moonshot (Escape)"
         onClicked: root.closeRequested()
       }
 
@@ -178,14 +189,74 @@ Item {
       }
     }
 
+    Row {
+      id: viewTabs
+      width: parent.width
+      spacing: Style.spacing.controlGap
+
+      Repeater {
+        model: [
+          { id: "tonight", label: "Tonight", icon: "full-moon", shortcut: "1" },
+          { id: "calendar", label: "Calendar", icon: "calendar", shortcut: "2" },
+          { id: "timeline", label: "Cycle", icon: "timeline", shortcut: "3" },
+          { id: "eclipses", label: "Eclipses", icon: "eclipse-lunar", shortcut: "4" }
+        ]
+
+        delegate: MoonshotButton {
+          id: viewButton
+          required property var modelData
+          width: (viewTabs.width - viewTabs.spacing * 3) / 4
+          iconName: modelData.icon
+          iconSize: Style.space(15)
+          text: modelData.label
+          fontSize: Style.font.caption
+          selected: root.activeView === modelData.id
+          tooltipText: modelData.label + " view (" + modelData.shortcut + ")"
+          onClicked: root.selectView(modelData.id)
+        }
+      }
+    }
+
+    LunarCalendar {
+      width: parent.width
+      visible: root.activeView === "calendar"
+      model: root.model
+      settings: root.settings
+      onDateRequested: function(isoDate) { root.dateRequested(isoDate) }
+      onPreviousMonthRequested: root.previousMonthRequested()
+      onNextMonthRequested: root.nextMonthRequested()
+    }
+
+    LunarTimeline {
+      width: parent.width
+      visible: root.activeView === "timeline"
+      model: root.model
+      settings: root.settings
+      onEventRequested: function(instantUtc, localDateTime) {
+        root.eventRequested(instantUtc, localDateTime)
+      }
+    }
+
+    EclipseTracking {
+      width: parent.width
+      visible: root.activeView === "eclipses"
+      model: root.model
+      settings: root.settings
+      onEventRequested: function(instantUtc, localDateTime) {
+        root.eventRequested(instantUtc, localDateTime)
+      }
+      onLocationRequested: root.locationRequested()
+    }
+
     Item {
       id: hero
       width: parent.width
-      height: Style.space(284)
+      height: Style.space(244)
+      visible: root.activeView === "tonight"
 
       Item {
         id: orbitField
-        width: Style.space(232)
+        width: Style.space(196)
         height: width
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
@@ -206,7 +277,7 @@ Item {
 
         MoonDisk {
           anchors.centerIn: parent
-          size: Style.space(200)
+          size: Style.space(168)
           phaseAngleDeg: root.model.phaseAngleDeg
           illumination: root.model.illuminationFraction
           direction: root.model.direction
@@ -257,6 +328,7 @@ Item {
       id: observerBand
       width: parent.width
       height: Style.space(88)
+      visible: root.activeView === "tonight"
       radius: Style.cornerRadius
       color: Util.alpha(Color.popups.text, 0.035)
 
@@ -337,7 +409,7 @@ Item {
     Column {
       width: parent.width
       spacing: Style.space(4)
-      visible: root.model.nextMajorPhases.length > 0
+      visible: root.activeView === "tonight" && root.model.nextMajorPhases.length > 0
 
       Ui.PanelSectionHeader {
         text: "Upcoming"
@@ -388,11 +460,15 @@ Item {
       }
     }
 
-    Ui.PanelSeparator { foreground: Color.popups.text }
+    Ui.PanelSeparator {
+      visible: root.activeView === "tonight"
+      foreground: Color.popups.text
+    }
 
     Item {
       width: parent.width
       height: Style.spacing.controlHeight
+      visible: root.activeView === "tonight"
 
       MoonshotButton {
         id: previousButton
@@ -430,6 +506,7 @@ Item {
     Row {
       width: parent.width
       spacing: Style.spacing.controlGap
+      visible: root.activeView === "tonight"
 
       MoonshotButton {
         width: (parent.width - parent.spacing * 3) / 4
@@ -464,6 +541,7 @@ Item {
 
     Text {
       width: parent.width
+      visible: root.activeView === "tonight"
       text: root.statusText()
       wrapMode: Text.WordWrap
       horizontalAlignment: Text.AlignHCenter

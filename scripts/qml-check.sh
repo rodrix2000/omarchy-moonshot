@@ -22,10 +22,12 @@ qml_files=(
   MoonshotIcon.qml
   MoonshotButton.qml
   MoonshotContent.qml
+  LunarCalendar.qml
+  LunarTimeline.qml
+  EclipseTracking.qml
   AstronomyClient.qml
   MoonshotModel.qml
   LocationEditor.qml
-  MoonshotService.qml
   BarWidget.qml
   Panel.qml
 )

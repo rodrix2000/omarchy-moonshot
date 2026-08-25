@@ -60,7 +60,7 @@ run_scene tests/qml/RenderSmoke.qml "RenderSmoke: Canvas rendered successfully"
 run_scene tests/qml/LifecycleSmoke.qml "LifecycleSmoke: MoonshotModel received snapshot OK"
 run_scene tests/qml/StateSmoke.qml "StateSmoke: travel presets persisted and switched OK"
 run_scene tests/qml/LocationEditorSmoke.qml "LocationEditorSmoke: saved places and guarded reset OK"
-run_scene tests/qml/PanelSmoke.qml "PanelSmoke: normal-state lifecycle, state reset, and no-scroll default OK"
+run_scene tests/qml/PanelSmoke.qml "PanelSmoke: compact popup planning views OK"
 
 python3 - "$stage_dir/state/moonshot/settings-v1.json" <<'PY'
 from pathlib import Path

@@ -1,0 +1,21 @@
+{
+  "source": "NASA Goddard Space Flight Center eclipse predictions",
+  "lunarSourceUrl": "https://eclipse.gsfc.nasa.gov/OH/OH2026.html",
+  "solarSourceUrl": "https://eclipse.gsfc.nasa.gov/SEsearch/SEdata.php?Ecl=+20270206",
+  "events": [
+    {
+      "type": "lunar",
+      "kind": "partial",
+      "peakUtc": "2026-08-28T04:13:00Z",
+      "startUtc": "2026-08-28T01:24:00Z",
+      "endUtc": "2026-08-28T07:02:00Z",
+      "toleranceSeconds": 90
+    },
+    {
+      "type": "solar",
+      "kind": "annular",
+      "peakUtc": "2027-02-06T15:59:32Z",
+      "toleranceSeconds": 5
+    }
+  ]
+}

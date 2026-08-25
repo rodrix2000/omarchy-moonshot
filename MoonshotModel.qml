@@ -32,6 +32,11 @@ Item {
   readonly property var horizon: snapshot ? snapshot.horizon : null
   readonly property var events: snapshot ? snapshot.events : null
   readonly property var nextMajorPhases: events && events.nextMajorPhases ? events.nextMajorPhases : []
+  readonly property var planning: snapshot ? snapshot.planning : null
+  readonly property var lunarCalendar: planning && planning.calendar ? planning.calendar : null
+  readonly property var lunarCycle: planning && planning.cycle ? planning.cycle : null
+  readonly property var upcomingEclipses: planning && planning.upcomingEclipses
+    ? planning.upcomingEclipses : []
 
   readonly property real phaseAngleDeg: moon ? moon.phaseAngleDeg : 0.0
   readonly property string phaseName: moon ? moon.phaseName : "Loading…"
@@ -266,6 +271,28 @@ Item {
     root.refresh()
   }
 
+  function selectDate(isoDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ""))) return
+    root.selectedLocalDate = String(isoDate)
+    root.selectedInstantUtc = ""
+    root.selectionMode = "browse"
+    root.refresh()
+  }
+
+  function stepMonth(delta) {
+    var baseDate = root.selectedLocalDate || (root.observation ? root.observation.selectedLocalDate : "")
+    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(baseDate || ""))
+    if (!match) return
+    var currentDay = Number(match[3])
+    var target = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1 + delta, 1))
+    var year = target.getUTCFullYear()
+    var monthIndex = target.getUTCMonth()
+    var lastDay = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate()
+    var day = Math.min(currentDay, lastDay)
+    root.selectDate(year + "-" + String(monthIndex + 1).padStart(2, "0")
+      + "-" + String(day).padStart(2, "0"))
+  }
+
   function jumpToToday() {
     root.selectionMode = "now"
     root.selectedLocalDate = ""
@@ -277,12 +304,17 @@ Item {
     for (var i = 0; i < root.nextMajorPhases.length; i++) {
       var event = root.nextMajorPhases[i]
       if (event.quarter !== quarterNum || !event.instantUtc || !event.localDateTime) continue
-      root.selectionMode = "event"
-      root.selectedLocalDate = String(event.localDateTime).split("T")[0]
-      root.selectedInstantUtc = String(event.instantUtc)
-      root.refresh()
+      root.jumpToEvent(event.instantUtc, event.localDateTime)
       return
     }
+  }
+
+  function jumpToEvent(instantUtc, localDateTime) {
+    if (!instantUtc || !localDateTime) return
+    root.selectionMode = "event"
+    root.selectedLocalDate = String(localDateTime).split("T")[0]
+    root.selectedInstantUtc = String(instantUtc)
+    root.refresh()
   }
 
   function validateAndSaveLocation(label, lat, lon, tzName, elev) {

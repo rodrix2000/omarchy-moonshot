@@ -42,6 +42,20 @@ Window {
       { quarter: 2, name: "Full Moon", localDateTime: "2026-08-27T23:19:00-05:00", instantUtc: "2026-08-28T04:19:00Z" },
       { quarter: 3, name: "Last Quarter", localDateTime: "2026-09-04T02:51:00-05:00", instantUtc: "2026-09-04T07:51:00Z" }
     ]
+    property var lunarCalendar: null
+    property var lunarCycle: ({
+      durationDays: 29.41,
+      ageDays: 10.08,
+      position: 0.34269,
+      events: [
+        { quarter: 0, name: "New Moon", instantUtc: "2026-08-12T17:37:11Z", localDateTime: "2026-08-12T12:37:11-05:00", position: 0.0 },
+        { quarter: 1, name: "First Quarter", instantUtc: "2026-08-20T02:46:58Z", localDateTime: "2026-08-19T21:46:58-05:00", position: 0.251 },
+        { quarter: 2, name: "Full Moon", instantUtc: "2026-08-28T04:19:06Z", localDateTime: "2026-08-27T23:19:06-05:00", position: 0.52519 },
+        { quarter: 3, name: "Last Quarter", instantUtc: "2026-09-04T07:51:42Z", localDateTime: "2026-09-04T02:51:42-05:00", position: 0.76822 },
+        { quarter: 0, name: "New Moon", instantUtc: "2026-09-11T03:27:28Z", localDateTime: "2026-09-10T22:27:28-05:00", position: 1.0 }
+      ]
+    })
+    property var upcomingEclipses: []
     property bool isToday: true
     property bool loading: false
     property var lastError: null
@@ -164,7 +178,8 @@ Window {
       anchors.bottomMargin: 12
       anchors.left: parent.left
       anchors.leftMargin: 12
-      width: (parent.width - 36) / 2
+      anchors.right: parent.right
+      anchors.rightMargin: 12
       radius: 6
       color: "#0c1118"
       border.width: 1
@@ -323,7 +338,7 @@ Window {
 
           Text {
             width: parent.width
-            text: "Keep travel notes open while Moonshot tracks the local lunar view beside them on the same workspace."
+            text: "Keep travel notes open while Moonshot floats above the workspace as a compact shell popup."
             wrapMode: Text.WordWrap
             lineHeight: 1.35
             font.family: Style.font.family
@@ -402,13 +417,12 @@ Window {
 
     BorderSurface {
       id: panelMock
-      width: companionMock.width
+      width: Style.space(420)
+      height: Math.min(Style.space(660), previewContent.implicitHeight + Style.space(32))
       anchors.top: barMock.bottom
       anchors.topMargin: 12
-      anchors.bottom: parent.bottom
-      anchors.bottomMargin: 12
       anchors.right: parent.right
-      anchors.rightMargin: 12
+      anchors.rightMargin: 16
       radius: 6
       color: Color.popups.background
       borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, 1)
@@ -422,6 +436,7 @@ Window {
         anchors.margins: 16
         model: previewModel
         settings: ({ renderMode: "realistic", reducedMotion: false, timeFormat: "12h" })
+        activeView: "timeline"
       }
     }
   }

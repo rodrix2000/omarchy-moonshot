@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-24
+
+### Added
+- Monthly lunar calendar with local-evening phase renders, exact major-phase markers, keyboard date selection, and month navigation.
+- Exact new-to-new lunar cycle timeline with local quarter times and selectable event jumps.
+- Offline lunar and solar eclipse tracking with classification, contact/maximum times, countdowns, obscuration, and observer-local visibility.
+- NASA GSFC eclipse fixtures plus calendar, cycle, visibility, responsive layout, and performance regression coverage.
+
+### Changed
+- Add four compact, keyboard-addressable panel views: Tonight, Calendar, Cycle, and Eclipses.
+- Restore Moonshot’s original anchored, notification-style Omarchy popup instead of opening a Hyprland-managed tiled window.
+- Keep all four views within the compact 420 × 620 popup content target.
+- Update the marketplace preview with live captures of all four anchored popup views.
+
+### Fixed
+- Prevent the astronomy helper from writing Python bytecode caches inside the installed plugin checkout.
+- Skip exact local solar-eclipse searches when the topocentric geometry is a clear miss, keeping snapshot calculations within the performance budget.
+
 ## [0.1.2] - 2026-08-23
 
 ### Fixed

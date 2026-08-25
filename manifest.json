@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "io.github.rodrix2000.moonshot",
   "name": "Moonshot",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "author": "Rudy Rodriguez",
   "license": "MIT",
-  "description": "A beautiful, offline-first moon phase and local lunar timing companion for the Omarchy bar.",
+  "description": "An offline-first lunar calendar, cycle, eclipse, and local timing companion for the Omarchy bar.",
   "homepage": "https://github.com/rodrix2000/omarchy-moonshot",
   "repository": "https://github.com/rodrix2000/omarchy-moonshot",
   "keywords": [
@@ -18,25 +18,22 @@
     "quickshell"
   ],
   "kinds": [
-    "service",
-    "panel",
     "bar-widget"
   ],
-  "keepLoaded": true,
   "entryPoints": {
-    "service": "MoonshotService.qml",
-    "panel": "Panel.qml",
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
     "displayName": "Moonshot",
-    "description": "See the current moon phase and open a local lunar panel with illumination, moon age, major phases, and moonrise/moonset.",
+    "description": "See the current moon phase and open a lunar calendar, cycle timeline, eclipse tracker, and local timing panel.",
     "category": "Info",
     "aliases": [
       "moon",
       "lunar",
       "astronomy",
       "phase",
+      "calendar",
+      "eclipse",
       "moonrise",
       "moonset"
     ],

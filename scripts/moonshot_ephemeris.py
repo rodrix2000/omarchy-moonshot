@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Moonshot Ephemeris Engine.
 
-Computes astronomical lunar phase, illumination, moon age, upcoming quarter events,
-observer rise/set, and horizon altitude using vendored Astronomy Engine.
+Computes astronomical lunar phase, illumination, moon age, monthly planning data,
+cycle and eclipse events, observer rise/set, and horizon altitude using vendored
+Astronomy Engine.
 """
 
 from __future__ import annotations
@@ -16,6 +17,10 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import zoneinfo
+
+# Runtime calculations must never modify the installed plugin checkout, even
+# when an older shell component launches the helper without Python's -B flag.
+sys.dont_write_bytecode = True
 
 # Ensure vendored astronomy library is in sys.path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -65,6 +70,13 @@ QUARTER_NAMES = {
     1: "First Quarter",
     2: "Full Moon",
     3: "Last Quarter",
+}
+
+ECLIPSE_KIND_LABELS = {
+    astronomy.EclipseKind.Penumbral: "Penumbral",
+    astronomy.EclipseKind.Partial: "Partial",
+    astronomy.EclipseKind.Annular: "Annular",
+    astronomy.EclipseKind.Total: "Total",
 }
 
 
@@ -198,8 +210,8 @@ def get_system_timezone() -> zoneinfo.ZoneInfo:
     return zoneinfo.ZoneInfo("UTC")
 
 
-def compute_moon_age(obs_time: astronomy.Time) -> Tuple[float, str]:
-    """Find exact previous New Moon and return (age_in_days, previous_new_moon_utc_iso)."""
+def find_previous_new_moon(obs_time: astronomy.Time) -> astronomy.Time:
+    """Find the exact New Moon quarter immediately preceding an instant."""
     search_start = obs_time.AddDays(-40.0)
     quarter = astronomy.SearchMoonQuarter(search_start)
     latest_new_moon: Optional[astronomy.Time] = None
@@ -220,6 +232,16 @@ def compute_moon_age(obs_time: astronomy.Time) -> Tuple[float, str]:
 
     if latest_new_moon is None:
         raise ValueError("Could not determine preceding New Moon quarter.")
+
+    return latest_new_moon
+
+
+def compute_moon_age(
+    obs_time: astronomy.Time,
+    previous_new_moon: Optional[astronomy.Time] = None,
+) -> Tuple[float, str]:
+    """Return elapsed days and the exact preceding New Moon UTC instant."""
+    latest_new_moon = previous_new_moon or find_previous_new_moon(obs_time)
 
     age_days = obs_time.ut - latest_new_moon.ut
     prev_new_iso = format_iso_utc(astro_time_to_dt(latest_new_moon))
@@ -254,6 +276,342 @@ def compute_upcoming_phases(
         quarter = astronomy.NextMoonQuarter(quarter)
 
     events.sort(key=lambda x: x["instantUtc"])
+    return events
+
+
+def compute_lunar_calendar(
+    selected_date: datetime.date, tz: zoneinfo.ZoneInfo
+) -> Dict[str, Any]:
+    """Compute a local-time monthly lunar calendar at 21:00 each day."""
+    month_start = selected_date.replace(day=1)
+    if month_start.month == 12:
+        next_month = datetime.date(month_start.year + 1, 1, 1)
+    else:
+        next_month = datetime.date(month_start.year, month_start.month + 1, 1)
+    day_count = (next_month - month_start).days
+
+    local_start = datetime.datetime.combine(
+        month_start, datetime.time(0, 0, 0), tzinfo=tz
+    )
+    local_end = datetime.datetime.combine(
+        next_month, datetime.time(0, 0, 0), tzinfo=tz
+    )
+    quarter = astronomy.SearchMoonQuarter(
+        dt_to_astro_time(local_start.astimezone(datetime.timezone.utc)).AddDays(-2.0)
+    )
+    end_ut = dt_to_astro_time(local_end.astimezone(datetime.timezone.utc)).ut
+    major_by_date: Dict[str, Dict[str, Any]] = {}
+    for _ in range(8):
+        if quarter.time.ut >= end_ut:
+            break
+        event_utc = astro_time_to_dt(quarter.time)
+        event_local = event_utc.astimezone(tz)
+        if event_local.date() >= month_start:
+            major_by_date[event_local.date().isoformat()] = {
+                "quarter": quarter.quarter,
+                "name": QUARTER_NAMES[quarter.quarter],
+                "instantUtc": format_iso_utc(event_utc),
+                "localDateTime": format_iso_local(event_local),
+            }
+        quarter = astronomy.NextMoonQuarter(quarter)
+
+    days: List[Dict[str, Any]] = []
+    for offset in range(day_count):
+        local_date = month_start + datetime.timedelta(days=offset)
+        local_evening = datetime.datetime.combine(
+            local_date, datetime.time(21, 0, 0), tzinfo=tz
+        )
+        astro_time = dt_to_astro_time(
+            local_evening.astimezone(datetime.timezone.utc)
+        )
+        phase_deg = normalize_degrees(astronomy.MoonPhase(astro_time))
+        phase_name, direction = classify_phase(phase_deg)
+        illum_fraction = float(
+            astronomy.Illumination(astronomy.Body.Moon, astro_time).phase_fraction
+        )
+        days.append(
+            {
+                "date": local_date.isoformat(),
+                "day": local_date.day,
+                "phaseAngleDeg": round(phase_deg, 2),
+                "phaseName": phase_name,
+                "direction": direction,
+                "illuminationFraction": round(illum_fraction, 4),
+                "illuminationPercent": round(illum_fraction * 100.0, 1),
+                "majorPhase": major_by_date.get(local_date.isoformat()),
+            }
+        )
+
+    return {
+        "year": month_start.year,
+        "month": month_start.month,
+        "firstWeekday": month_start.weekday(),
+        "dayCount": day_count,
+        "days": days,
+    }
+
+
+def compute_lunar_cycle(
+    obs_time: astronomy.Time,
+    tz: zoneinfo.ZoneInfo,
+    previous_new_moon: Optional[astronomy.Time] = None,
+) -> Dict[str, Any]:
+    """Compute the exact major events and selected position in one lunar cycle."""
+    previous_new = previous_new_moon or find_previous_new_moon(obs_time)
+    events: List[Dict[str, Any]] = []
+
+    previous_utc = astro_time_to_dt(previous_new)
+    previous_local = previous_utc.astimezone(tz)
+    events.append(
+        {
+            "quarter": 0,
+            "name": QUARTER_NAMES[0],
+            "instantUtc": format_iso_utc(previous_utc),
+            "localDateTime": format_iso_local(previous_local),
+            "offsetDays": 0.0,
+            "position": 0.0,
+        }
+    )
+
+    quarter = astronomy.SearchMoonQuarter(previous_new.AddDays(0.5))
+    while len(events) < 5:
+        event_utc = astro_time_to_dt(quarter.time)
+        event_local = event_utc.astimezone(tz)
+        events.append(
+            {
+                "quarter": quarter.quarter,
+                "name": QUARTER_NAMES[quarter.quarter],
+                "instantUtc": format_iso_utc(event_utc),
+                "localDateTime": format_iso_local(event_local),
+                "offsetDays": round(quarter.time.ut - previous_new.ut, 4),
+                "position": 0.0,
+            }
+        )
+        if quarter.quarter == 0:
+            break
+        quarter = astronomy.NextMoonQuarter(quarter)
+
+    if len(events) != 5 or events[-1]["quarter"] != 0:
+        raise ValueError("Could not determine a complete lunar cycle.")
+
+    duration_days = float(events[-1]["offsetDays"])
+    for event in events:
+        event["position"] = round(event["offsetDays"] / duration_days, 5)
+
+    position = max(0.0, min(1.0, (obs_time.ut - previous_new.ut) / duration_days))
+    return {
+        "startInstantUtc": events[0]["instantUtc"],
+        "endInstantUtc": events[-1]["instantUtc"],
+        "durationDays": round(duration_days, 3),
+        "ageDays": round(max(0.0, obs_time.ut - previous_new.ut), 3),
+        "position": round(position, 5),
+        "events": events,
+    }
+
+
+def body_altitude(
+    body: astronomy.Body,
+    astro_time: astronomy.Time,
+    observer: astronomy.Observer,
+) -> float:
+    """Return apparent body altitude for a local visibility decision."""
+    equator = astronomy.Equator(body, astro_time, observer, True, True)
+    horizon = astronomy.Horizon(
+        astro_time,
+        observer,
+        equator.ra,
+        equator.dec,
+        astronomy.Refraction.Normal,
+    )
+    return float(horizon.altitude)
+
+
+def lunar_eclipse_visible(
+    eclipse: astronomy.LunarEclipseInfo, observer: astronomy.Observer
+) -> bool:
+    """Determine whether any part of a lunar eclipse is above the local horizon."""
+    begin = eclipse.peak.AddDays(-eclipse.sd_penum / 1440.0)
+    end = eclipse.peak.AddDays(eclipse.sd_penum / 1440.0)
+    if any(
+        body_altitude(astronomy.Body.Moon, instant, observer) > 0.0
+        for instant in (begin, eclipse.peak, end)
+    ):
+        return True
+
+    rise = astronomy.SearchRiseSet(
+        astronomy.Body.Moon,
+        observer,
+        astronomy.Direction.Rise,
+        begin,
+        max(0.1, end.ut - begin.ut),
+    )
+    return rise is not None and rise.ut <= end.ut
+
+
+def local_solar_eclipse_possible(
+    global_peak: astronomy.Time, observer: astronomy.Observer
+) -> bool:
+    """Cheaply reject locations far outside a global solar eclipse footprint.
+
+    The topocentric Sun/Moon separation is sampled with a generous angular and
+    horizon margin. A possible match is always confirmed by Astronomy Engine's
+    exact local eclipse search; this prefilter only avoids searching through
+    later years when the next global event clearly misses the observer.
+    """
+    for minute_offset in range(-420, 421, 60):
+        sample = global_peak.AddDays(minute_offset / 1440.0)
+        sun = astronomy.Equator(
+            astronomy.Body.Sun, sample, observer, True, True
+        )
+        moon = astronomy.Equator(
+            astronomy.Body.Moon, sample, observer, True, True
+        )
+        sun_dec = math.radians(sun.dec)
+        moon_dec = math.radians(moon.dec)
+        delta_ra = math.radians((sun.ra - moon.ra) * 15.0)
+        cos_separation = (
+            math.sin(sun_dec) * math.sin(moon_dec)
+            + math.cos(sun_dec) * math.cos(moon_dec) * math.cos(delta_ra)
+        )
+        separation = math.degrees(
+            math.acos(max(-1.0, min(1.0, cos_separation)))
+        )
+        # Solar and lunar apparent radii sum to roughly 0.6 degrees. With
+        # one-hour samples, the nearest sample is at most about 0.3 degrees
+        # from a local contact, so 1 degree retains a safety margin without
+        # sending clearly missed eclipses through the expensive exact search.
+        if separation > 1.0:
+            continue
+        sun_horizon = astronomy.Horizon(
+            sample,
+            observer,
+            sun.ra,
+            sun.dec,
+            astronomy.Refraction.Normal,
+        )
+        if sun_horizon.altitude > -10.0:
+            return True
+    return False
+
+
+def eclipse_event_payload(
+    *,
+    eclipse_type: str,
+    kind: astronomy.EclipseKind,
+    peak: astronomy.Time,
+    begin: Optional[astronomy.Time],
+    end: Optional[astronomy.Time],
+    obscuration: Optional[float],
+    visibility: str,
+    tz: zoneinfo.ZoneInfo,
+    obs_time: astronomy.Time,
+) -> Dict[str, Any]:
+    """Normalize an Astronomy Engine eclipse into the Moonshot protocol."""
+    kind_label = ECLIPSE_KIND_LABELS.get(kind, "Unknown")
+    peak_utc = astro_time_to_dt(peak)
+    peak_local = peak_utc.astimezone(tz)
+
+    def local_iso(value: Optional[astronomy.Time]) -> Optional[str]:
+        if value is None:
+            return None
+        return format_iso_local(astro_time_to_dt(value).astimezone(tz))
+
+    if visibility == "visible":
+        visibility_label = "Visible from this location"
+    elif visibility == "not-visible":
+        visibility_label = "Not visible from this location"
+    else:
+        visibility_label = "Set a location to check visibility"
+
+    return {
+        "id": f"{eclipse_type}-{peak_local.date().isoformat()}",
+        "type": eclipse_type,
+        "kind": kind_label.lower(),
+        "title": f"{kind_label} {eclipse_type.title()} Eclipse",
+        "peakUtc": format_iso_utc(peak_utc),
+        "peakLocalDateTime": format_iso_local(peak_local),
+        "startLocalDateTime": local_iso(begin),
+        "endLocalDateTime": local_iso(end),
+        "daysUntil": round(max(0.0, peak.ut - obs_time.ut), 2),
+        "obscurationPercent": (
+            round(float(obscuration) * 100.0, 1)
+            if obscuration is not None and math.isfinite(obscuration)
+            else None
+        ),
+        "visibility": visibility,
+        "visibilityLabel": visibility_label,
+    }
+
+
+def compute_upcoming_eclipses(
+    obs_time: astronomy.Time,
+    tz: zoneinfo.ZoneInfo,
+    latitude: Optional[float],
+    longitude: Optional[float],
+    elevation_m: float = 0.0,
+) -> List[Dict[str, Any]]:
+    """Compute the next lunar and global solar eclipses with local visibility."""
+    observer = (
+        astronomy.Observer(latitude, longitude, elevation_m)
+        if latitude is not None and longitude is not None
+        else None
+    )
+
+    lunar = astronomy.SearchLunarEclipse(obs_time)
+    lunar_begin = lunar.peak.AddDays(-lunar.sd_penum / 1440.0)
+    lunar_end = lunar.peak.AddDays(lunar.sd_penum / 1440.0)
+    lunar_visibility = "location-required"
+    if observer is not None:
+        lunar_visibility = (
+            "visible" if lunar_eclipse_visible(lunar, observer) else "not-visible"
+        )
+    events = [
+        eclipse_event_payload(
+            eclipse_type="lunar",
+            kind=lunar.kind,
+            peak=lunar.peak,
+            begin=lunar_begin,
+            end=lunar_end,
+            obscuration=lunar.obscuration,
+            visibility=lunar_visibility,
+            tz=tz,
+            obs_time=obs_time,
+        )
+    ]
+
+    solar = astronomy.SearchGlobalSolarEclipse(obs_time)
+    solar_peak = solar.peak
+    solar_begin: Optional[astronomy.Time] = None
+    solar_end: Optional[astronomy.Time] = None
+    solar_obscuration = solar.obscuration
+    solar_visibility = "location-required"
+    if observer is not None:
+        solar_visibility = "not-visible"
+        if local_solar_eclipse_possible(solar_peak, observer):
+            local_solar = astronomy.SearchLocalSolarEclipse(
+                solar_peak.AddDays(-1.0), observer
+            )
+            if abs(local_solar.peak.time.ut - solar_peak.ut) < 1.0:
+                solar_visibility = "visible"
+                solar_peak = local_solar.peak.time
+                solar_begin = local_solar.partial_begin.time
+                solar_end = local_solar.partial_end.time
+                solar_obscuration = local_solar.obscuration
+
+    events.append(
+        eclipse_event_payload(
+            eclipse_type="solar",
+            kind=solar.kind,
+            peak=solar_peak,
+            begin=solar_begin,
+            end=solar_end,
+            obscuration=solar_obscuration,
+            visibility=solar_visibility,
+            tz=tz,
+            obs_time=obs_time,
+        )
+    )
+    events.sort(key=lambda event: event["peakUtc"])
     return events
 
 
@@ -542,8 +900,19 @@ def compute_snapshot(
     illum_fraction = round(float(illum.phase_fraction), 4)
     illum_percent = round(illum_fraction * 100.0, 1)
 
-    age_days, prev_new_utc = compute_moon_age(astro_time)
+    previous_new_moon = find_previous_new_moon(astro_time)
+    age_days, prev_new_utc = compute_moon_age(astro_time, previous_new_moon)
     upcoming_phases = compute_upcoming_phases(astro_time, tz)
+    lunar_calendar = compute_lunar_calendar(target_date, tz)
+    lunar_calendar["todayLocalDate"] = local_today.isoformat()
+    lunar_cycle = compute_lunar_cycle(astro_time, tz, previous_new_moon)
+    upcoming_eclipses = compute_upcoming_eclipses(
+        astro_time,
+        tz,
+        latitude if has_coords else None,
+        longitude if has_coords else None,
+        elevation_m,
+    )
 
     if has_coords:
         horizon_info = compute_horizon(
@@ -599,6 +968,11 @@ def compute_snapshot(
             "rise": rise_event,
             "set": set_event,
             "nextMajorPhases": upcoming_phases,
+        },
+        "planning": {
+            "calendar": lunar_calendar,
+            "cycle": lunar_cycle,
+            "upcomingEclipses": upcoming_eclipses,
         },
         "engine": {
             "name": "Astronomy Engine",

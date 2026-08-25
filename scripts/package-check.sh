@@ -41,10 +41,19 @@ assert not missing, f"manifest missing required fields: {missing}"
 assert manifest["schemaVersion"] == 1
 assert manifest["id"] == "io.github.rodrix2000.moonshot"
 assert manifest["license"] == "MIT"
-assert manifest["kinds"] == ["service", "panel", "bar-widget"]
-assert manifest["entryPoints"].get("service") == "MoonshotService.qml"
-assert manifest["entryPoints"].get("panel") == "Panel.qml"
+assert manifest["kinds"] == ["bar-widget"]
 assert manifest["entryPoints"].get("barWidget") == "BarWidget.qml"
+assert set(manifest["entryPoints"]) == {"barWidget"}
+
+panel_source = (root / "Panel.qml").read_text(encoding="utf-8")
+bar_source = (root / "BarWidget.qml").read_text(encoding="utf-8")
+client_source = (root / "AstronomyClient.qml").read_text(encoding="utf-8")
+helper_source = (root / "scripts/moonshot_ephemeris.py").read_text(encoding="utf-8")
+assert "Ui.KeyboardPanel" in panel_source
+assert "FloatingWindow" not in panel_source
+assert 'source: Qt.resolvedUrl("Panel.qml")' in bar_source
+assert '["python3", "-B", root.helperPath' in client_source
+assert "sys.dont_write_bytecode = True" in helper_source
 
 for entry in manifest["entryPoints"].values():
     path = Path(entry)
@@ -57,6 +66,10 @@ for required_file in (
     "SECURITY.md",
     "THIRD_PARTY_NOTICES.md",
     "preview.png",
+    "docs/screenshots/tonight.png",
+    "docs/screenshots/calendar.png",
+    "docs/screenshots/cycle.png",
+    "docs/screenshots/eclipses.png",
 ):
     assert (root / required_file).is_file(), required_file
 PY

@@ -106,6 +106,55 @@ Item {
         ctx.beginPath()
         ctx.arc(12, 12, 7.2, 0, Math.PI * 2)
         ctx.stroke()
+      } else if (root.name === "calendar") {
+        ctx.beginPath()
+        ctx.rect(4, 5, 16, 15)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(4, 9)
+        ctx.lineTo(20, 9)
+        ctx.moveTo(8, 3.5)
+        ctx.lineTo(8, 6.5)
+        ctx.moveTo(16, 3.5)
+        ctx.lineTo(16, 6.5)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(8, 13, 1, 0, Math.PI * 2)
+        ctx.arc(12, 13, 1, 0, Math.PI * 2)
+        ctx.arc(16, 13, 1, 0, Math.PI * 2)
+        ctx.arc(8, 17, 1, 0, Math.PI * 2)
+        ctx.arc(12, 17, 1, 0, Math.PI * 2)
+        ctx.fill()
+      } else if (root.name === "timeline") {
+        ctx.beginPath()
+        ctx.moveTo(3.5, 12)
+        ctx.lineTo(20.5, 12)
+        ctx.stroke()
+        for (var marker = 0; marker < 4; marker++) {
+          ctx.beginPath()
+          ctx.arc(4 + marker * 5.3, 12, marker === 2 ? 2.4 : 1.7, 0, Math.PI * 2)
+          marker === 2 ? ctx.fill() : ctx.stroke()
+        }
+      } else if (root.name === "eclipse-lunar") {
+        ctx.beginPath()
+        ctx.arc(11, 12, 7.2, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(15.5, 12, 7.2, Math.PI * 0.58, Math.PI * 1.42)
+        ctx.stroke()
+      } else if (root.name === "eclipse-solar") {
+        ctx.beginPath()
+        ctx.arc(12, 12, 5.5, 0, Math.PI * 2)
+        ctx.stroke()
+        for (var ray = 0; ray < 8; ray++) {
+          var rayAngle = ray * Math.PI / 4
+          ctx.moveTo(12 + Math.cos(rayAngle) * 8, 12 + Math.sin(rayAngle) * 8)
+          ctx.lineTo(12 + Math.cos(rayAngle) * 10, 12 + Math.sin(rayAngle) * 10)
+        }
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(10.5, 12, 3.4, 0, Math.PI * 2)
+        ctx.fill()
       } else if (root.name === "close") {
         ctx.beginPath()
         ctx.moveTo(6, 6)

@@ -40,7 +40,7 @@ Item {
 
   function requestCommand(request) {
     var options = request.options
-    var cmd = ["python3", root.helperPath, "snapshot", "--request-id", request.requestId]
+    var cmd = ["python3", "-B", root.helperPath, "snapshot", "--request-id", request.requestId]
 
     if (options.instantUtc) cmd.push("--instant-utc", String(options.instantUtc))
     if (options.selectedDate) cmd.push("--selected-date", String(options.selectedDate))
@@ -108,6 +108,8 @@ Item {
 
   function validSnapshot(data) {
     if (!data || !data.observation || !data.moon || !data.events || !data.horizon) return false
+    if (!data.planning || !data.planning.calendar || !data.planning.cycle ||
+        !Array.isArray(data.planning.upcomingEclipses)) return false
     if (typeof data.observation.selectedLocalDate !== "string" ||
         typeof data.observation.localDateTime !== "string") return false
     if (!root.finiteNumber(data.moon.phaseAngleDeg) ||
@@ -119,6 +121,25 @@ Item {
     if (!root.finiteNumber(data.moon.ageDays) || data.moon.ageDays < 0 || data.moon.ageDays > 40) return false
     if (typeof data.moon.phaseName !== "string" || typeof data.moon.direction !== "string") return false
     if (!data.events.rise || !data.events.set || !Array.isArray(data.events.nextMajorPhases)) return false
+    if (!Array.isArray(data.planning.calendar.days) ||
+        data.planning.calendar.days.length < 28 || data.planning.calendar.days.length > 31) return false
+    if (!Array.isArray(data.planning.cycle.events) || data.planning.cycle.events.length !== 5 ||
+        !root.finiteNumber(data.planning.cycle.position) ||
+        data.planning.cycle.position < 0 || data.planning.cycle.position > 1) return false
+    if (data.planning.upcomingEclipses.length < 2) return false
+
+    for (var dayIndex = 0; dayIndex < data.planning.calendar.days.length; dayIndex++) {
+      var day = data.planning.calendar.days[dayIndex]
+      if (!day || typeof day.date !== "string" ||
+          !root.finiteNumber(day.phaseAngleDeg) ||
+          !root.finiteNumber(day.illuminationFraction)) return false
+    }
+    for (var eclipseIndex = 0; eclipseIndex < data.planning.upcomingEclipses.length; eclipseIndex++) {
+      var eclipse = data.planning.upcomingEclipses[eclipseIndex]
+      if (!eclipse || typeof eclipse.type !== "string" ||
+          typeof eclipse.title !== "string" || typeof eclipse.peakUtc !== "string" ||
+          typeof eclipse.visibility !== "string") return false
+    }
     return true
   }
 
